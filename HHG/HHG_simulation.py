@@ -1,7 +1,7 @@
 """
 ce fichier permet de resoudre TDSE en 1D pour la simulation de HHG
 :auteur: Maxence BARRE
-TODO: modifier pr prendre en charge des simulations beaucoup plus longues (enregistrement au fur et à mesure de la simulation)
+TODO: modifier l enregistrement via buffer pour utiliser hdf5 car c est plus rapide et plus efficace
 TODO: peut etre sauvegarder en local (et pas de les envoyer sur le serveur)
 """
 
@@ -20,12 +20,14 @@ import os
 # Space and time parameters
 x = np.linspace(-100, 100, 1024)                    # in a.u. => in bohr units
 dx = x[1] - x[0]                                    # in a.u. => should be well inferior to 1
-dt = 1                                           # in a:u , if dt>0.05, we can t see electron that comes back to the nucleus
+dt = 0.05                                           # in a:u , if dt>0.05, we can t see electron that comes back to the nucleus
 t = np.arange(-2000, 2000, dt)                      # also in a.u. => 1au=roughly 24as
 N = len(x)
 position_cap_abs = 75
 epsilon = 0.0001                                    # small value to avoid division by zero in potential calculation
 do_plot_at_end = True                               # if True, plot quite a lot of things at the end of the simulation
+save_with_buffer = True                          # if True, save the wavefunction history every given timestep (very useful for huge and long simulations)
+buffer_size = 10000                                  # used only if save_with_buffer is True, the size of the buffer to save the wavefunction history
 
 
 
@@ -81,10 +83,11 @@ bytes_per_element = np.dtype(np.complex128).itemsize  # 16 bytes
 total_bytes = len(t) * len(x) * bytes_per_element
 total_MB = 2*total_bytes / (1024 ** 2)
 print(f"[INFO] Approximate memory required for a (2x{len(t)}x{len(x)}) complex128 matrix: {total_MB:.2f} MB")
-if total_MB > 5000:  # if more than 5GB, raise a warning
-    print("[WARNING] The simulation will require a lot of memory, and may crach depending on your machine's RAM. Proceed with caution.")
-if total_MB > 10000:  # if more than 10GB, raise an error
-    raise MemoryError(f"[ERROR] The simulation requires more than 10GB of memory ({total_MB:.2f} MB). For sure, your machine will crash.")
+if not save_with_buffer:
+    if total_MB > 5000:  # if more than 5GB, raise a warning
+        print("[WARNING] The simulation will require a lot of memory, and may crach depending on your machine's RAM. Proceed with caution.")
+    if total_MB > 10000:  # if more than 10GB, raise an error
+        raise MemoryError(f"[ERROR] The simulation requires more than 10GB of memory ({total_MB:.2f} MB). For sure, your machine will crash.")
 ###############################################################################
 
 
@@ -92,13 +95,17 @@ if total_MB > 10000:  # if more than 10GB, raise an error
 ###############################################################################
 ## INITIALISATION DE LA SIMULATION
 ###############################################################################
-psi_history = np.zeros((len(t), len(x)), dtype=np.complex128)  # Store wavefunction history
-psi_fonda_history = np.zeros((len(t), len(x)), dtype=np.complex128)  # Store initial wavefunction history
+if not save_with_buffer:
+    psi_history = np.zeros((len(t), len(x)), dtype=np.complex128)  # Store wavefunction history
+    psi_fonda_history = np.zeros((len(t), len(x)), dtype=np.complex128)  # Store initial wavefunction history
+else:
+    psi_history = np.zeros((buffer_size, len(x)), dtype=np.complex128)
+    psi_fonda_history = np.zeros((buffer_size, len(x)), dtype=np.complex128)
 
 psi = np.complex128(psi_init.copy())  # Initial wavefunction
-psi_fonda = psi_init.copy()  # Initial fundamental wavefunction
+psi_fonda = np.complex128(psi_init.copy())  # Initial fundamental wavefunction
 
-psi_history[0] = np.complex128(psi.copy())  # Store initial wavefunction
+psi_history[0] = psi.copy()  # Store initial wavefunction
 psi_fonda_history[0] = psi_fonda.copy()  # Store initial fundamental wavefunction
 ###############################################################################
 
@@ -120,6 +127,33 @@ for En in tqdm(champE):
     psi_fonda = evolve_crank_nikolson(psi_fonda, potentiel_spatial, 0, dt, x)       # Evolve the fundamental state without the laser field
     assert np.isclose(np.sum(np.abs(psi_fonda)**2) * dx, 1.0, atol=1e-6), f"Normalization condition not satisfied for fundamental state {np.sum(np.abs(psi_fonda)**2) * dx}"
     psi_fonda_history[i, :] = psi_fonda.copy()  # Store the fundamental state at this time step
+
+    if save_with_buffer and (i + 1) % buffer_size == 0:
+        print(f"[INFO] Saving buffer to files")
+        with open(file_psi, 'a') as file:
+            for row in psi_history[:-1]:
+                # Format each element in the row as a string and join them with spaces
+                line = ' '.join([f"{elem.real}+{elem.imag}i" for elem in row]) + '\n'
+                file.write(line)
+
+        with open(file_psi_fonda, 'a') as file_fonda:
+            for row in psi_fonda_history[:-1]:
+                # Format each element in the row as a string and join them with spaces
+                line = ' '.join([f"{elem.real}+{elem.imag}i" for elem in row]) + '\n'
+                file_fonda.write(line)
+
+        # and reset the buffers
+        psi_history = np.zeros((buffer_size, len(x)), dtype=np.complex128)
+        psi_fonda_history = np.zeros((buffer_size, len(x)), dtype=np.complex128)
+
+        psi_history[0] = psi.copy()  # Store initial wavefunction
+        psi_fonda_history[0] = psi_fonda.copy()  # Store initial fundamental wavefunction
+
+        i = -1
+        print(f"[INFO] Buffer saved, arrays reset, continuing the simulation...")
+
+
+
 print("[INFO] Simulation completed.")
 
 print("[INFO] Calculating the density probability...")

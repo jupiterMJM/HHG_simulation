@@ -72,10 +72,19 @@ potentiel_atomique = -1.0 / np.sqrt(x**2 + epsilon) +0j
 potentiel_spatial = potentiel_atomique + potentiel_CAP(x, x_start=-abs(position_cap_abs), x_end=abs(position_cap_abs), eta_0=0.1)
 
 
-# chech that the files do not already exist
+# check that the files do not already exist
 if os.path.exists(file_psi) or os.path.exists(file_psi_fonda):
     raise FileExistsError(f"Files {file_psi} or {file_psi_fonda} already exist. Please delete or rename them before running the simulation.")
 
+# approximate memory required for the psi_history and psi_fonda_history arrays
+bytes_per_element = np.dtype(np.complex128).itemsize  # 16 bytes
+total_bytes = len(t) * len(x) * bytes_per_element
+total_MB = 2*total_bytes / (1024 ** 2)
+print(f"[INFO] Approximate memory required for a (2x{len(t)}x{len(x)}) complex128 matrix: {total_MB:.2f} MB")
+if total_MB > 5000:  # if more than 5GB, raise a warning
+    print("[WARNING] The simulation will require a lot of memory, and may crach depending on your machine's RAM. Proceed with caution.")
+if total_MB > 10000:  # if more than 10GB, raise an error
+    raise MemoryError(f"[ERROR] The simulation requires more than 10GB of memory ({total_MB:.2f} MB). For sure, your machine will crash.")
 ###############################################################################
 
 
@@ -86,10 +95,10 @@ if os.path.exists(file_psi) or os.path.exists(file_psi_fonda):
 psi_history = np.zeros((len(t), len(x)), dtype=np.complex128)  # Store wavefunction history
 psi_fonda_history = np.zeros((len(t), len(x)), dtype=np.complex128)  # Store initial wavefunction history
 
-psi = psi_init.copy()  # Initial wavefunction
+psi = np.complex128(psi_init.copy())  # Initial wavefunction
 psi_fonda = psi_init.copy()  # Initial fundamental wavefunction
 
-psi_history[0] = psi.copy()  # Store initial wavefunction
+psi_history[0] = np.complex128(psi.copy())  # Store initial wavefunction
 psi_fonda_history[0] = psi_fonda.copy()  # Store initial fundamental wavefunction
 ###############################################################################
 

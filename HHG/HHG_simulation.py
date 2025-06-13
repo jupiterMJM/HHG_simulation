@@ -19,12 +19,12 @@ import h5py
 ## CONFIGURATION
 #################################################################################
 # Space and time parameters
-x = np.linspace(-100, 100, 1024)                    # in a.u. => in bohr units
-dx = x[1] - x[0]                                    # in a.u. => should be well inferior to 1
+dx = 0.1                                         # in a.u. => should be small enough to resolve well the wave function => dx < 0.1 is a good value
+x = np.arange(-120, 120, dx)                     # in a.u. => 1au=roughly 24as, this is the space grid for the simulation
 dt = 0.05                                           # in a:u , if dt>0.05, we can t see electron that comes back to the nucleus
 t = np.arange(-2000, 2000, dt)                      # also in a.u. => 1au=roughly 24as
 N = len(x)
-position_cap_abs = 75
+position_cap_abs = 80
 epsilon = 0.0001                                    # small value to avoid division by zero in potential calculation
 do_plot_at_end = True                               # if True, plot quite a lot of things at the end of the simulation
 save_with_buffer = True                          # if True, save the wavefunction history every given timestep (very useful for huge and long simulations)
@@ -53,6 +53,23 @@ m = 9.10938356e-31                                  # kg, electron mass
 a0 = 5.291772108e-11                                # m, Bohr radius
 hbar = 1.0545718e-34                                # J.s, reduced Planck's constant
 t_au = 2.418884e-17                                 # s, constant for conversion to atomic units
+
+# Affichage des parametres de la simulation
+print("##################################################################################")
+print("High Harmonic Generation Simulation Parameters")
+print("##################################################################################")
+print(f"[INFO] Simulation parameters:")
+print(f"  - Space step (dx): {dx:.4e} a.u. ({len(x)} points)")
+print(f"  - Time step (dt): {dt:.4e} a.u. ({len(t)} points)")
+print(f"  - Wavelength: {wavelength:.4e} nm")
+print(f"  - Intensity: {I_wcm2:.4e} W/cm^2")
+print(f"  - Buffer size: {buffer_size} (if save_with_buffer is True)")
+print(f"  - Save with buffer: {save_with_buffer}")
+print(f"  - Do plot at end: {do_plot_at_end}")
+print(f"  - File to save wavefunction history: {file_psi}")
+print(f"  - File to save fundamental wavefunction history: {file_psi_fonda}")
+print(f"Estimated time for the simulation (for 200it/s): {len(t) / 200:.2f} seconds")
+print(f"Estimated memory required for the simulation: {2 * len(t) * len(x) * 16 / (1024 ** 2):.2f} MB")  # 2 for psi and psi_fonda, 16 bytes for complex128
 ##################################################################################
 
 
@@ -175,9 +192,16 @@ rho_history = np.abs(psi_history)**2 * dx  # Density probability for the wavefun
 ## SAVING AND PLOTTING RESULTS
 ###############################################################################
 print("[INFO] Saving results to files, DO NOT CLOSE THE PROGRAM UNTIL THIS IS DONE")
-# TODO save the last part of the buffer (or the whole array if save_with_buffer is False)
-# np.savetxt(file_psi, psi_history)
-# np.savetxt(file_psi_fonda, psi_fonda_history)
+if save_with_buffer:
+    with h5py.File(file_psi, 'a') as f:
+        f.create_dataset(f'psi_history_{buffer_number}', data=psi_history)
+    with h5py.File(file_psi_fonda, 'a') as f_fonda:
+        f_fonda.create_dataset(f'psi_fonda_history_{buffer_number}', data=psi_fonda_history)
+else:
+    with h5py.File(file_psi, 'w') as f:
+        f.create_dataset('psi_history', data=psi_history)
+    with h5py.File(file_psi_fonda, 'w') as f_fonda:
+        f_fonda.create_dataset('psi_fonda_history', data=psi_fonda_history)
 
 if do_plot_at_end:
     print("[INFO] Plotting results...")

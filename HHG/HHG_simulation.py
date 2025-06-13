@@ -39,8 +39,9 @@ I_wcm2 = 1e14                                       # Intensity in W/cm^2, NOT I
 
 # Name of file to save the results
 main_directory = "C:/maxence_data_results/HHG_simulation/"
-file_psi = main_directory + f"psi_history_{dx:.4e}_{dt:.4e}_{wavelength:.4e}_{I_wcm2:.4e}.h5"  # File to save the wavefunction history
-file_psi_fonda = main_directory + f"psi_fonda_history_{dx:.4e}_{dt:.4e}_{wavelength:.4e}_{I_wcm2:.4e}.h5"  # File to save the fundamental wavefunction history
+# file_psi = main_directory + f"psi_history_{dx:.4e}_{dt:.4e}_{wavelength:.4e}_{I_wcm2:.4e}.h5"  # File to save the wavefunction history
+# file_psi_fonda = main_directory + f"psi_fonda_history_{dx:.4e}_{dt:.4e}_{wavelength:.4e}_{I_wcm2:.4e}.h5"  # File to save the fundamental wavefunction history
+file_output = main_directory + f"HHG_simulation_{dx:.4e}_{dt:.4e}_{wavelength:.4e}_{I_wcm2:.4e}.h5"  # File to save all the results
 
 # Initial wavefunction
 psi_init = np.exp(-np.abs(x))                       # will be used both as initial wavefunction and as initial fondamental wavefunction
@@ -66,8 +67,7 @@ print(f"  - Intensity: {I_wcm2:.4e} W/cm^2")
 print(f"  - Buffer size: {buffer_size} (if save_with_buffer is True)")
 print(f"  - Save with buffer: {save_with_buffer}")
 print(f"  - Do plot at end: {do_plot_at_end}")
-print(f"  - File to save wavefunction history: {file_psi}")
-print(f"  - File to save fundamental wavefunction history: {file_psi_fonda}")
+print(f"  - File output: {file_output}")
 print(f"Estimated time for the simulation (for 200it/s): {len(t) / 200:.2f} seconds")
 print(f"Estimated memory required for the simulation: {2 * len(t) * len(x) * 16 / (1024 ** 2):.2f} MB")  # 2 for psi and psi_fonda, 16 bytes for complex128
 ##################################################################################
@@ -93,8 +93,8 @@ potentiel_spatial = potentiel_atomique + potentiel_CAP(x, x_start=-abs(position_
 
 
 # check that the files do not already exist
-if os.path.exists(file_psi) or os.path.exists(file_psi_fonda):
-    raise FileExistsError(f"Files {file_psi} or {file_psi_fonda} already exist. Please delete or rename them before running the simulation.")
+if os.path.exists(file_output):
+    raise FileExistsError(f"Files {file_output} already exists. Please delete or rename them before running the simulation.")
 
 # approximate memory required for the psi_history and psi_fonda_history arrays
 bytes_per_element = np.dtype(np.complex128).itemsize  # 16 bytes
@@ -130,6 +130,36 @@ psi_fonda_history[0] = psi_fonda.copy()  # Store initial fundamental wavefunctio
 
 
 ###############################################################################
+## afin de faciliter l'analyse de données, on va sauvegarder tous les parametres, potentiels et champs dans le même fichier hdf5
+###############################################################################
+with h5py.File(file_output, 'w') as f:
+    f.create_group('simulation_parameters')
+    f.create_group("potentials_fields")
+    f.create_group("psi_history")
+    f.create_group("psi_fonda_history")
+
+    # Save simulation parameters
+    f['simulation_parameters'].attrs['dx'] = dx
+    f['simulation_parameters'].attrs['x_start'] = x[0]
+    f['simulation_parameters'].attrs['x_end'] = x[-1]
+    f['simulation_parameters'].attrs['dt'] = dt
+    f['simulation_parameters'].attrs['t_start'] = t[0]
+    f['simulation_parameters'].attrs['t_end'] = t[-1]
+    f['simulation_parameters'].attrs['wavelength'] = wavelength
+    f['simulation_parameters'].attrs['I_wcm2'] = I_wcm2
+    f["simulation_parameters"].attrs["epsilon"] = epsilon
+    f["simulation_parameters"].attrs["position_cap_abs"] = position_cap_abs
+    f["psi_initial"] = psi_init  # Save the initial wavefunction
+
+
+    # Save the potential and electric field
+    f['potentials_fields'].create_dataset('potentiel_atomique', data=np.vstack((x, potentiel_atomique)).T)
+    f['potentials_fields'].create_dataset('potentiel_spatial', data=np.vstack((x, potentiel_spatial)).T)
+    f['potentials_fields'].create_dataset('champE', data=np.vstack((t, champE)).T)
+
+
+
+###############################################################################
 ## SIMULATION
 ###############################################################################
 print("[INFO] Starting the simulation...")
@@ -149,23 +179,17 @@ for En in tqdm(champE):
 
     if save_with_buffer and (i + 1) % buffer_size == 0:
         print(f"[INFO] Saving buffer to files")
-        # with open(file_psi, 'a') as file:
-        #     for row in psi_history[:-1]:
-        #         # Format each element in the row as a string and join them with spaces
-        #         line = ' '.join([f"{elem.real}+{elem.imag}i" for elem in row]) + '\n'
-        #         file.write(line)
 
-        # with open(file_psi_fonda, 'a') as file_fonda:
-        #     for row in psi_fonda_history[:-1]:
-        #         # Format each element in the row as a string and join them with spaces
-        #         line = ' '.join([f"{elem.real}+{elem.imag}i" for elem in row]) + '\n'
-        #         file_fonda.write(line)
 
-        with h5py.File(file_psi, 'a') as f:
-            f.create_dataset(f'psi_history_{buffer_number}', data=psi_history)
+        # with h5py.File(file_psi, 'a') as f:
+        #     f.create_dataset(f'psi_history_{buffer_number}', data=psi_history)
         
-        with h5py.File(file_psi_fonda, 'a') as f_fonda:
-            f_fonda.create_dataset(f'psi_fonda_history_{buffer_number}', data=psi_fonda_history)
+        # with h5py.File(file_psi_fonda, 'a') as f_fonda:
+        #     f_fonda.create_dataset(f'psi_fonda_history_{buffer_number}', data=psi_fonda_history)
+
+        with h5py.File(file_output, 'a') as f:
+            f["psi_history"].create_dataset(f'psi_history_{buffer_number}', data=psi_history)
+            f["psi_fonda_history"].create_dataset(f'psi_fonda_history_{buffer_number}', data=psi_fonda_history)
         buffer_number += 1
 
         # and reset the buffers
@@ -193,15 +217,21 @@ rho_history = np.abs(psi_history)**2 * dx  # Density probability for the wavefun
 ###############################################################################
 print("[INFO] Saving results to files, DO NOT CLOSE THE PROGRAM UNTIL THIS IS DONE")
 if save_with_buffer:
-    with h5py.File(file_psi, 'a') as f:
-        f.create_dataset(f'psi_history_{buffer_number}', data=psi_history)
-    with h5py.File(file_psi_fonda, 'a') as f_fonda:
-        f_fonda.create_dataset(f'psi_fonda_history_{buffer_number}', data=psi_fonda_history)
+    # with h5py.File(file_psi, 'a') as f:
+    #     f.create_dataset(f'psi_history_{buffer_number}', data=psi_history)
+    # with h5py.File(file_psi_fonda, 'a') as f_fonda:
+    #     f_fonda.create_dataset(f'psi_fonda_history_{buffer_number}', data=psi_fonda_history)
+    with h5py.File(file_output, 'a') as f:
+        f["psi_history"].create_dataset(f'psi_history_{buffer_number}', data=psi_history)
+        f["psi_fonda_history"].create_dataset(f'psi_fonda_history_{buffer_number}', data=psi_fonda_history)
 else:
-    with h5py.File(file_psi, 'w') as f:
-        f.create_dataset('psi_history', data=psi_history)
-    with h5py.File(file_psi_fonda, 'w') as f_fonda:
-        f_fonda.create_dataset('psi_fonda_history', data=psi_fonda_history)
+    # with h5py.File(file_psi, 'w') as f:
+    #     f.create_dataset('psi_history', data=psi_history)
+    # with h5py.File(file_psi_fonda, 'w') as f_fonda:
+    #     f_fonda.create_dataset('psi_fonda_history', data=psi_fonda_history)
+    with h5py.File(file_output, 'w') as f:
+        f["psi_history"].create_dataset('psi_history', data=psi_history)
+        f["psi_fonda_history"].create_dataset('psi_fonda_history', data=psi_fonda_history)
 
 if do_plot_at_end:
     print("[INFO] Plotting results...")

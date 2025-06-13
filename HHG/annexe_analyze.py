@@ -119,3 +119,26 @@ def plot_direct_info(hdf5_file):
     plt.tight_layout()
 
     plt.clim(0, 0.001)  # Set color limits for better visibility
+
+
+
+def compute_dipole(hdf5_file):
+    """
+    Compute the dipole moment from the wavefunction data in the HDF5 file.
+    
+    :param hdf5_file: HDF5 file containing the wavefunction data
+    the aim is to compute is while saving the memory of my computer
+    :return: Dipole moment
+    """
+    parametres = hdf5_file["simulation_parameters"].attrs
+    x = np.arange(parametres["x_start"], np.round(parametres["x_end"], 0), parametres["dx"])
+    dx = parametres["dx"]
+    t = np.arange(parametres["t_start"], np.round(parametres["t_end"], 0), parametres["dt"])
+
+    dipole_retour = np.array([])
+    for i in range(len(hdf5_file["psi_history"])):
+        psi_history = hdf5_file["psi_history"][list(hdf5_file["psi_history"].keys())[i]]
+        psi_fonda_history = hdf5_file["psi_fonda_history"][list(hdf5_file["psi_fonda_history"].keys())[i]]
+        dipole_current_batch = np.sum(np.conj(psi_fonda_history) * x * psi_history, axis=1) * dx
+        dipole_retour = np.append(dipole_retour, dipole_current_batch)
+    return dipole_retour, t

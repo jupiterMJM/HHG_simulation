@@ -15,7 +15,17 @@ import numpy as np
 
 # Ouverture du fichier
 with h5py.File(r"C:\maxence_data_results\HHG_simulation\HHG_simulation_1.0000e-01_5.0000e-02_8.0000e+02_1.0000e+14.h5", "r") as f:
-    plot_a_matrix(f["psi_fonda_history"], function_to_apply=compute_rho, title="Rho Matrix", xlabel="X-axis", ylabel="Y-axis")
-    # fig.clim(0, 0.001)
-    plt.clim(0, 0.001)  # Set color limits for better visibility
-    plt.show()
+    parametres = f["simulation_parameters"].attrs
+    x = np.arange(parametres["x_start"], parametres["x_end"], parametres["dx"])
+    t = np.arange(parametres["t_start"], parametres["t_end"], parametres["dt"])
+    champE = f["potentials_fields"]["champE"][()]
+    potentiel_spatial = f["potentials_fields"]["potentiel_spatial"][()]
+
+    
+    
+
+
+    plot_direct_info(f)
+
+
+plt.show()

@@ -12,6 +12,7 @@ from annexe_HHG import *
 from core_calculation import *
 from tqdm import tqdm
 import os
+import h5py
 
 
 #################################################################################
@@ -38,8 +39,8 @@ I_wcm2 = 1e14                                       # Intensity in W/cm^2, NOT I
 
 # Name of file to save the results
 main_directory = "C:/maxence_data_results/HHG_simulation/"
-file_psi = main_directory + f"psi_history_{dx:.4e}_{dt:.4e}_{wavelength:.4e}_{I_wcm2:.4e}.txt"  # File to save the wavefunction history
-file_psi_fonda = main_directory + f"psi_fonda_history_{dx:.4e}_{dt:.4e}_{wavelength:.4e}_{I_wcm2:.4e}.txt"  # File to save the fundamental wavefunction history
+file_psi = main_directory + f"psi_history_{dx:.4e}_{dt:.4e}_{wavelength:.4e}_{I_wcm2:.4e}.h5"  # File to save the wavefunction history
+file_psi_fonda = main_directory + f"psi_fonda_history_{dx:.4e}_{dt:.4e}_{wavelength:.4e}_{I_wcm2:.4e}.h5"  # File to save the fundamental wavefunction history
 
 # Initial wavefunction
 psi_init = np.exp(-np.abs(x))                       # will be used both as initial wavefunction and as initial fondamental wavefunction
@@ -115,6 +116,7 @@ psi_fonda_history[0] = psi_fonda.copy()  # Store initial fundamental wavefunctio
 ## SIMULATION
 ###############################################################################
 print("[INFO] Starting the simulation...")
+buffer_number = 0
 i = -1
 for En in tqdm(champE):
     i += 1
@@ -130,17 +132,24 @@ for En in tqdm(champE):
 
     if save_with_buffer and (i + 1) % buffer_size == 0:
         print(f"[INFO] Saving buffer to files")
-        with open(file_psi, 'a') as file:
-            for row in psi_history[:-1]:
-                # Format each element in the row as a string and join them with spaces
-                line = ' '.join([f"{elem.real}+{elem.imag}i" for elem in row]) + '\n'
-                file.write(line)
+        # with open(file_psi, 'a') as file:
+        #     for row in psi_history[:-1]:
+        #         # Format each element in the row as a string and join them with spaces
+        #         line = ' '.join([f"{elem.real}+{elem.imag}i" for elem in row]) + '\n'
+        #         file.write(line)
 
-        with open(file_psi_fonda, 'a') as file_fonda:
-            for row in psi_fonda_history[:-1]:
-                # Format each element in the row as a string and join them with spaces
-                line = ' '.join([f"{elem.real}+{elem.imag}i" for elem in row]) + '\n'
-                file_fonda.write(line)
+        # with open(file_psi_fonda, 'a') as file_fonda:
+        #     for row in psi_fonda_history[:-1]:
+        #         # Format each element in the row as a string and join them with spaces
+        #         line = ' '.join([f"{elem.real}+{elem.imag}i" for elem in row]) + '\n'
+        #         file_fonda.write(line)
+
+        with h5py.File(file_psi, 'a') as f:
+            f.create_dataset(f'psi_history_{buffer_number}', data=psi_history)
+        
+        with h5py.File(file_psi_fonda, 'a') as f_fonda:
+            f_fonda.create_dataset(f'psi_fonda_history_{buffer_number}', data=psi_fonda_history)
+        buffer_number += 1
 
         # and reset the buffers
         psi_history = np.zeros((buffer_size, len(x)), dtype=np.complex128)
@@ -166,8 +175,9 @@ rho_history = np.abs(psi_history)**2 * dx  # Density probability for the wavefun
 ## SAVING AND PLOTTING RESULTS
 ###############################################################################
 print("[INFO] Saving results to files, DO NOT CLOSE THE PROGRAM UNTIL THIS IS DONE")
-np.savetxt(file_psi, psi_history)
-np.savetxt(file_psi_fonda, psi_fonda_history)
+# TODO save the last part of the buffer (or the whole array if save_with_buffer is False)
+# np.savetxt(file_psi, psi_history)
+# np.savetxt(file_psi_fonda, psi_fonda_history)
 
 if do_plot_at_end:
     print("[INFO] Plotting results...")

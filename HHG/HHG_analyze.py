@@ -15,16 +15,6 @@ import numpy as np
 
 # Ouverture du fichier
 with h5py.File(r"C:\maxence_data_results\HHG_simulation\HHG_simulation_1.0000e-01_5.0000e-02_8.0000e+02_1.0000e+14.h5", "r") as f:
-    parametres = f["simulation_parameters"].attrs
-    x = np.arange(parametres["x_start"], parametres["x_end"], parametres["dx"])
-    t = np.arange(parametres["t_start"], parametres["t_end"], parametres["dt"])
-    champE = f["potentials_fields"]["champE"][()]
-    potentiel_spatial = f["potentials_fields"]["potentiel_spatial"][()]
-
-    
-    
-
-
     plot_direct_info(f)
 
 

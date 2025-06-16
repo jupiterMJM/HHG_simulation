@@ -263,9 +263,28 @@ if save_with_buffer:
     #     f.create_dataset(f'psi_history_{buffer_number}', data=psi_history)
     # with h5py.File(file_psi_fonda, 'a') as f_fonda:
     #     f_fonda.create_dataset(f'psi_fonda_history_{buffer_number}', data=psi_fonda_history)
+
+    # for now we save the last buffer but we may have to remove it
     with h5py.File(file_output, 'a') as f:
         f["psi_history"].create_dataset(f'psi_history_{buffer_number}', data=psi_history)
         f["psi_fonda_history"].create_dataset(f'psi_fonda_history_{buffer_number}', data=psi_fonda_history)
+
+    if not save_the_psi_history:        # if we save psi_history, all computation can be done later
+            # now we don t save the psi itself anymore, we could just save only the caracteristics of the wavepackets, such as: the dipole (projected onto psi_fonda and psi itsel), the momentum (same)
+            print("[INFO] Computing characteristics of the wavepacket, might take some time...")
+            dipole_on_fonda, dipole_on_itself, momentum_on_fonda, momentum_on_itself, scalar_product_fonda, kinetic_energy, stdx_fonda, stdx_itself, stdp_fonda, stdp_itself = calculate_caracterisitcs_wavepacket(psi_history, x, psi_fonda_history)
+            with h5py.File(file_output, 'a') as f:
+                f["wavepacket_characteristics/dipole_on_fonda"].create_dataset(f'dipole_on_fonda_{buffer_number}', data=dipole_on_fonda)
+                f["wavepacket_characteristics/dipole_on_itself"].create_dataset(f'dipole_on_itself_{buffer_number}', data=dipole_on_itself)
+                if not charact_only_save_dipole:
+                    f["wavepacket_characteristics/momentum_on_fonda"].create_dataset(f'momentum_on_fonda_{buffer_number}', data=momentum_on_fonda)
+                    f["wavepacket_characteristics/momentum_on_itself"].create_dataset(f'momentum_on_itself_{buffer_number}', data=momentum_on_itself)
+                    f["wavepacket_characteristics/scalar_product_fonda"].create_dataset(f'scalar_product_fonda_{buffer_number}', data=scalar_product_fonda)
+                    f["wavepacket_characteristics/kinetic_energy"].create_dataset(f'kinetic_energy_{buffer_number}', data=kinetic_energy)
+                    f["wavepacket_characteristics/stdx_fonda"].create_dataset(f'stdx_fonda_{buffer_number}', data=stdx_fonda)
+                    f["wavepacket_characteristics/stdx_itself"].create_dataset(f'stdx_itself_{buffer_number}', data=stdx_itself)
+                    f["wavepacket_characteristics/stdp_fonda"].create_dataset(f'stdp_fonda_{buffer_number}', data=stdp_fonda)
+                    f["wavepacket_characteristics/stdp_itself"].create_dataset(f'stdp_itself_{buffer_number}', data=stdp_itself)
 else:
     # with h5py.File(file_psi, 'w') as f:
     #     f.create_dataset('psi_history', data=psi_history)

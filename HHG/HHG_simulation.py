@@ -22,17 +22,20 @@ import h5py
 dx = 0.01                                         # in a.u. => should be small enough to resolve well the wave function => dx < 0.1 is a good value
 x = np.arange(-120, 120, dx)                     # in a.u. => 1au=roughly 24as, this is the space grid for the simulation
 dt = 0.05                                           # in a:u , if dt>0.05, we can t see electron that comes back to the nucleus
-t = np.arange(-2000, 2000, dt)                      # also in a.u. => 1au=roughly 24as
+t = np.arange(-1000, 1000, dt)                      # also in a.u. => 1au=roughly 24as
 N = len(x)
 position_cap_abs = 80
 epsilon = 0.00001                                    # small value to avoid division by zero in potential calculation
 do_plot_at_end = True                               # if True, plot quite a lot of things at the end of the simulation
 save_with_buffer = True                          # if True, save the wavefunction history every given timestep (very useful for huge and long simulations)
-buffer_size = 10000                                  # used only if save_with_buffer is True, the size of the buffer to save the wavefunction history
+buffer_size_nb_point = 1e9                                  # used only if save_with_buffer is True, the number of points that will be in the buffer (prevents memory overflow when changing dx)
 save_the_psi_history = False                     # if True, save the wavefunction history in a file (useful for debugging and analysis), but can take a fucking lot of memory
 # if False, only 2 or 3 batches will be saved just for debugging purposes, and the rest will be discarded
 charact_only_save_dipole = True          # if True, amongst the characteristics of the wavepacket, only the dipole will be saved (save space)
 
+
+
+buffer_size = int(buffer_size_nb_point / (16*N))  # number of points in the buffer, used only if save_with_buffer is True
 
 
 # Laser Parameters
@@ -44,7 +47,7 @@ I_wcm2 = 1e14                                       # Intensity in W/cm^2, NOT I
 main_directory = "C:/maxence_data_results/HHG_simulation/"
 # file_psi = main_directory + f"psi_history_{dx:.4e}_{dt:.4e}_{wavelength:.4e}_{I_wcm2:.4e}.h5"  # File to save the wavefunction history
 # file_psi_fonda = main_directory + f"psi_fonda_history_{dx:.4e}_{dt:.4e}_{wavelength:.4e}_{I_wcm2:.4e}.h5"  # File to save the fundamental wavefunction history
-file_output = main_directory + f"HHG_simulation_{dx:.4e}_{dt:.4e}_{wavelength:.4e}_{I_wcm2:.4e}.h5"  # File to save all the results
+file_output = main_directory + f"HHG_simulation_pulse_{dx:.4e}_{dt:.4e}_{wavelength:.4e}_{I_wcm2:.4e}.h5"  # File to save all the results
 
 # Initial wavefunction
 psi_init = np.exp(-np.abs(x))                       # will be used both as initial wavefunction and as initial fondamental wavefunction
@@ -95,7 +98,7 @@ print(f"[INFO] Laser parameters:"
         f"\n  - Electric field amplitude (E0_laser): {E0_laser:.2e} a.u.")
 
 # Calcul de l'amplitude du laser en a.u.
-champE_func = lambda x, t: E0_laser*np.cos(omega_au * t) * envelope(t, periode_au=periode_au)
+champE_func = lambda x, t: E0_laser*np.cos(omega_au * t) * envelope_pulse(t, periode_au=periode_au)
 champE = champE_func(x[:, None], t)                 # Champ électrique en fonction de x et t
 
 # Calcul du potentiel atomique

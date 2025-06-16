@@ -16,7 +16,7 @@ t_au = 2.418884e-17  # s, constant for conversion to atomic units
 
 
 # Ouverture du fichier
-with h5py.File(r"C:\maxence_data_results\HHG_simulation\HHG_simulation_4.0000e-02_5.0000e-02_8.0000e+02_1.0000e+14.h5", "r") as f:
+with h5py.File(r"C:\maxence_data_results\HHG_simulation\HHG_simulation_pulse_5.0000e-02_5.0000e-02_8.0000e+02_1.0000e+14.h5", "r") as f:
     parametres = f["simulation_parameters"].attrs
     I_wcm2 = parametres["I_wcm2"]  # in W/cm^2
     plot_direct_info(f)
@@ -31,13 +31,13 @@ with h5py.File(r"C:\maxence_data_results\HHG_simulation\HHG_simulation_4.0000e-0
         dipole, t = compute_dipole(f)
     else:
         dipole = np.array([])
-        for batch in f["wavepacket_characteristics/dipole_on_fonda"]:
+        for batch in sorted(f["wavepacket_characteristics/dipole_on_fonda"], key=lambda x: int(x.split('_')[-1])):
             # print("HELLLLLLO", f[f"wavepacket_characteristics/dipole_on_fonda/{batch}"])
             dipole = np.append(dipole, np.array(f[f"wavepacket_characteristics/dipole_on_fonda/{batch}"]))
         t = np.linspace(0, len(dipole) * parametres["dt"], len(dipole))
     plt.figure()
     plt.plot(t, dipole)
-    plt.plot(t, f["potentials_fields/champE"][:, 1], label="Electric Field")
+    # plt.plot(t, f["potentials_fields/champE"][:, 1][np.logical_and(f["potentials_fields/champE"][:, 0] > t[0], f["potentials_fields/champE"][:, 0] < t[-1])], label="Electric Field")
     plt.xlabel("Time (a.u.)")
     plt.ylabel("Dipole (a.u.)")
     plt.title("Dipole over time")

@@ -55,7 +55,7 @@ def envelope_pulse(t, periode_au):
     :return: tableau numpy de l'enveloppe temporelle
     :note: 
     """
-    retour = np.sin(np.pi * t / (t[-1] - t[0])) ** 2
+    retour = np.sin(np.pi/ (t[-1] - t[0]) * (t-t[0])) ** 2
     return retour
 
 

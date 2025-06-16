@@ -87,6 +87,8 @@ def plot_direct_info(hdf5_file):
     plt.title("Electric Field")
     plt.legend()
     plt.grid()
+    intensity = compute_intensity_from_efield(electric_field[:, 1], electric_field[:, 0])
+    print(f"Intensity in W/m^2 : Mean = {intensity[0]:.2e}, Max = {intensity[1]:.2e}")
 
     # plot the very beginning of the simulation to see how it behaves
     data = compute_rho(hdf5_file["psi_history"]["psi_history_0"])
@@ -138,19 +140,42 @@ def compute_dipole(hdf5_file):
 
     dipole_retour = np.array([])
     for i in range(len(hdf5_file["psi_history"])):
-        psi_history = hdf5_file["psi_history"][list(hdf5_file["psi_history"].keys())[i]]
+        psi_history = hdf5_file["psi_history"][sorted(list(hdf5_file["psi_history"].keys()), key = lambda x: int(x.split("_")[-1]))[i]]
         psi_fonda_history = hdf5_file["psi_fonda_history"][list(hdf5_file["psi_fonda_history"].keys())[i]]
         dipole_current_batch = np.sum(np.conj(psi_fonda_history) * x * psi_history, axis=1) * dx
         dipole_retour = np.append(dipole_retour, dipole_current_batch)
     return dipole_retour, t
 
 
-def compute_intensity_from_efield(electric_field, dt):
+def compute_intensity_from_efield(amplitudes, time, in_au=True):
     """
-    compute the intensity from the array of electric field
-    :param electric_field: array of electric field
-    :param dt: time step
-    :return: intensity array
+    Calculate the total intensity from an array of amplitudes over time.
+
+    Parameters:
+    amplitudes (array-like): Array of amplitude values.
+    time (array-like): Array of time values corresponding to the amplitudes.
+
+    Returns:
+    float: The total intensity.
     """
-    intensity = np.abs(electric_field[:, 1]) ** 2 / (2 * epsilon_0 * c)  # in a.u.
-    return intensity * (e / a0 ** 2)  # convert to W/cm^2
+    e = 1.602176634e-19         # elementary charge, C
+    epsilon_0 = 8.8541878128e-12 # vacuum permittivity, F/m
+    a0 = 5.29177210903e-11      # Bohr radius, m
+    t_au = 2.4188843265857e-17    # atomic unit of time, s
+    c = 299792458                # speed of light, m/s
+    if in_au:
+        # Convert time from atomic units to seconds
+        time = time.copy() * t_au
+        # Convert amplitudes from atomic units (a.u.) to SI units (V/m)
+        # 1 a.u. of electric field = e / (4 * pi * epsilon_0 * a0^2)
+        # TODO, verifier que c'est correct
+        
+        amplitudes = amplitudes.copy() * (e / (4 * np.pi * epsilon_0 * a0**2))
+
+    # Calculate the instantaneous intensity using the full formula
+    instantaneous_intensity = 0.5 * c * epsilon_0 * np.square(amplitudes)
+    
+    # Integrate the instantaneous intensity over time to get the total intensity
+    total_intensity = np.trapezoid(instantaneous_intensity, time)
+    
+    return total_intensity/(time[-1]-time[0]), np.max(instantaneous_intensity)  # Return mean and max intensity

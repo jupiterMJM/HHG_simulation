@@ -19,16 +19,19 @@ import h5py
 ## CONFIGURATION
 #################################################################################
 # Space and time parameters
-dx = 0.1                                         # in a.u. => should be small enough to resolve well the wave function => dx < 0.1 is a good value
+dx = 0.01                                         # in a.u. => should be small enough to resolve well the wave function => dx < 0.1 is a good value
 x = np.arange(-120, 120, dx)                     # in a.u. => 1au=roughly 24as, this is the space grid for the simulation
 dt = 0.05                                           # in a:u , if dt>0.05, we can t see electron that comes back to the nucleus
 t = np.arange(-2000, 2000, dt)                      # also in a.u. => 1au=roughly 24as
 N = len(x)
 position_cap_abs = 80
-epsilon = 0.0001                                    # small value to avoid division by zero in potential calculation
+epsilon = 0.00001                                    # small value to avoid division by zero in potential calculation
 do_plot_at_end = True                               # if True, plot quite a lot of things at the end of the simulation
 save_with_buffer = True                          # if True, save the wavefunction history every given timestep (very useful for huge and long simulations)
 buffer_size = 10000                                  # used only if save_with_buffer is True, the size of the buffer to save the wavefunction history
+save_the_psi_history = False                     # if True, save the wavefunction history in a file (useful for debugging and analysis), but can take a fucking lot of memory
+# if False, only 2 or 3 batches will be saved just for debugging purposes, and the rest will be discarded
+charact_only_save_dipole = True          # if True, amongst the characteristics of the wavepacket, only the dipole will be saved (save space)
 
 
 
@@ -54,6 +57,8 @@ m = 9.10938356e-31                                  # kg, electron mass
 a0 = 5.291772108e-11                                # m, Bohr radius
 hbar = 1.0545718e-34                                # J.s, reduced Planck's constant
 t_au = 2.418884e-17                                 # s, constant for conversion to atomic units
+epsilon_0 = 8.854187817e-12                         # F/m, vacuum permittivity
+E_h = 4.3597447222071e-18                           # J, Hartree energy
 
 # Affichage des parametres de la simulation
 print("##################################################################################")
@@ -81,7 +86,13 @@ freq = 3e8 / (wavelength * 1e-9)                    # Frequency in Hz, convertin
 omega_au = 2*np.pi*freq*t_au
 periode_au = 2*np.pi / omega_au                     # Period in atomic units
 pulse_duration = 25 * periode_au                    # Pulse duration in atomic units
-E0_laser = 5.338e-9 * np.sqrt(I_wcm2)
+E0_laser = np.sqrt(2/(epsilon_0*c)) * np.sqrt(I_wcm2*1e4) / (E_h/(e*a0))       # from intensity to eletric field in a.u.
+print(f"[INFO] Laser parameters:"
+      f"\n  - Frequency: {freq:.2e} Hz"
+      f"\n  - Angular frequency (omega_au): {omega_au:.2e} a.u."
+        f"\n  - Period (periode_au): {periode_au:.2e} a.u."
+        f"\n  - Pulse duration: {pulse_duration:.2e} a.u."
+        f"\n  - Electric field amplitude (E0_laser): {E0_laser:.2e} a.u.")
 
 # Calcul de l'amplitude du laser en a.u.
 champE_func = lambda x, t: E0_laser*np.cos(omega_au * t) * envelope(t, periode_au=periode_au)
@@ -137,6 +148,19 @@ with h5py.File(file_output, 'w') as f:
     f.create_group("potentials_fields")
     f.create_group("psi_history")
     f.create_group("psi_fonda_history")
+    charac = f.create_group("wavepacket_characteristics")
+    charac.create_group("dipole_on_fonda")
+    charac.create_group("dipole_on_itself")
+    if not charact_only_save_dipole:
+        charac.create_group("momentum_on_fonda")
+        charac.create_group("momentum_on_itself")
+        charac.create_group("scalar_product_fonda")
+        charac.create_group("kinetic_energy")
+        charac.create_group("stdx_fonda")
+        charac.create_group("stdx_itself")
+        charac.create_group("stdp_fonda")
+        charac.create_group("stdp_itself")
+
 
     # Save simulation parameters
     f['simulation_parameters'].attrs['dx'] = dx
@@ -149,6 +173,7 @@ with h5py.File(file_output, 'w') as f:
     f['simulation_parameters'].attrs['I_wcm2'] = I_wcm2
     f["simulation_parameters"].attrs["epsilon"] = epsilon
     f["simulation_parameters"].attrs["position_cap_abs"] = position_cap_abs
+    f["simulation_parameters"].attrs["save_the_psi_history"] = save_the_psi_history  # Save the flag for saving psi history
     f["psi_initial"] = psi_init  # Save the initial wavefunction
 
 
@@ -178,19 +203,33 @@ for En in tqdm(champE):
     psi_fonda_history[i, :] = psi_fonda.copy()  # Store the fundamental state at this time step
 
     if save_with_buffer and (i + 1) % buffer_size == 0:
-        print(f"[INFO] Saving buffer to files")
+        # we do not save the buffer BUT we empty it
+        if save_the_psi_history or buffer_number in (0, 1, 6):  # we do not save the buffer unless a few of them to debug
+            print(f"[INFO] Saving buffer to files")
 
 
-        # with h5py.File(file_psi, 'a') as f:
-        #     f.create_dataset(f'psi_history_{buffer_number}', data=psi_history)
-        
-        # with h5py.File(file_psi_fonda, 'a') as f_fonda:
-        #     f_fonda.create_dataset(f'psi_fonda_history_{buffer_number}', data=psi_fonda_history)
-
-        with h5py.File(file_output, 'a') as f:
-            f["psi_history"].create_dataset(f'psi_history_{buffer_number}', data=psi_history)
-            f["psi_fonda_history"].create_dataset(f'psi_fonda_history_{buffer_number}', data=psi_fonda_history)
+            with h5py.File(file_output, 'a') as f:
+                f["psi_history"].create_dataset(f'psi_history_{buffer_number}', data=psi_history)
+                f["psi_fonda_history"].create_dataset(f'psi_fonda_history_{buffer_number}', data=psi_fonda_history)
         buffer_number += 1
+
+        if not save_the_psi_history:        # if we save psi_history, all computation can be done later
+            # now we don t save the psi itself anymore, we could just save only the caracteristics of the wavepackets, such as: the dipole (projected onto psi_fonda and psi itsel), the momentum (same)
+            print("[INFO] Computing characteristics of the wavepacket, might take some time...")
+            dipole_on_fonda, dipole_on_itself, momentum_on_fonda, momentum_on_itself, scalar_product_fonda, kinetic_energy, stdx_fonda, stdx_itself, stdp_fonda, stdp_itself = calculate_caracterisitcs_wavepacket(psi_history, x, psi_fonda_history)
+            with h5py.File(file_output, 'a') as f:
+                f["wavepacket_characteristics/dipole_on_fonda"].create_dataset(f'dipole_on_fonda_{buffer_number}', data=dipole_on_fonda)
+                f["wavepacket_characteristics/dipole_on_itself"].create_dataset(f'dipole_on_itself_{buffer_number}', data=dipole_on_itself)
+                if not charact_only_save_dipole:
+                    f["wavepacket_characteristics/momentum_on_fonda"].create_dataset(f'momentum_on_fonda_{buffer_number}', data=momentum_on_fonda)
+                    f["wavepacket_characteristics/momentum_on_itself"].create_dataset(f'momentum_on_itself_{buffer_number}', data=momentum_on_itself)
+                    f["wavepacket_characteristics/scalar_product_fonda"].create_dataset(f'scalar_product_fonda_{buffer_number}', data=scalar_product_fonda)
+                    f["wavepacket_characteristics/kinetic_energy"].create_dataset(f'kinetic_energy_{buffer_number}', data=kinetic_energy)
+                    f["wavepacket_characteristics/stdx_fonda"].create_dataset(f'stdx_fonda_{buffer_number}', data=stdx_fonda)
+                    f["wavepacket_characteristics/stdx_itself"].create_dataset(f'stdx_itself_{buffer_number}', data=stdx_itself)
+                    f["wavepacket_characteristics/stdp_fonda"].create_dataset(f'stdp_fonda_{buffer_number}', data=stdp_fonda)
+                    f["wavepacket_characteristics/stdp_itself"].create_dataset(f'stdp_itself_{buffer_number}', data=stdp_itself)
+
 
         # and reset the buffers
         psi_history = np.zeros((buffer_size, len(x)), dtype=np.complex128)

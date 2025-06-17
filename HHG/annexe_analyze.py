@@ -94,7 +94,7 @@ def plot_direct_info(hdf5_file):
     data = compute_rho(hdf5_file["psi_history"]["psi_history_0"])
     num_batch = 0
     plt.figure()
-    plt.imshow(np.rotate90(data), cmap='turbo', extent=( t[num_batch*data.shape[0]], t[(num_batch+1)*data.shape[0] -1] , x[0], x[-1]), aspect='auto')
+    plt.imshow(data.T, cmap='turbo', extent=( t[num_batch*data.shape[0]], t[(num_batch+1)*data.shape[0] -1] , x[-1], x[0]), aspect='auto')
     temp = electric_field[num_batch*data.shape[0]:(num_batch+1)*data.shape[0]-1][:, 1] / np.max(electric_field[num_batch*data.shape[0]:(num_batch+1)*data.shape[0]-1][:, 1]) * abs(x[-1])
     plt.plot(electric_field[num_batch*data.shape[0]:(num_batch+1)*data.shape[0]-1][:, 0], temp, color='red', label='Electric Field')
     plt.legend()

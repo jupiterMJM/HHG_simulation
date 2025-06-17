@@ -94,7 +94,7 @@ def plot_direct_info(hdf5_file):
     data = compute_rho(hdf5_file["psi_history"]["psi_history_0"])
     num_batch = 0
     plt.figure()
-    plt.imshow(data.T, cmap='turbo', extent=( t[num_batch*data.shape[0]], t[(num_batch+1)*data.shape[0] -1] , x[0], x[-1]), aspect='auto')
+    plt.imshow(np.rotate90(data), cmap='turbo', extent=( t[num_batch*data.shape[0]], t[(num_batch+1)*data.shape[0] -1] , x[0], x[-1]), aspect='auto')
     temp = electric_field[num_batch*data.shape[0]:(num_batch+1)*data.shape[0]-1][:, 1] / np.max(electric_field[num_batch*data.shape[0]:(num_batch+1)*data.shape[0]-1][:, 1]) * abs(x[-1])
     plt.plot(electric_field[num_batch*data.shape[0]:(num_batch+1)*data.shape[0]-1][:, 0], temp, color='red', label='Electric Field')
     plt.legend()
@@ -112,12 +112,27 @@ def plot_direct_info(hdf5_file):
         data = compute_rho(hdf5_file["psi_history"]["psi_history_6"])
         num_batch = 6
         plt.figure()
-        plt.imshow(data.T, cmap='turbo', extent=( t[num_batch*data.shape[0]], t[(num_batch+1)*data.shape[0] -1] , x[0], x[-1]), aspect='auto')
+        plt.imshow(data.T, cmap='turbo', extent=( t[num_batch*data.shape[0]], t[(num_batch+1)*data.shape[0] -1] , x[-1], x[0]), aspect='auto')
         temp = electric_field[num_batch*data.shape[0]:(num_batch+1)*data.shape[0]-1][:, 1] / np.max(electric_field[num_batch*data.shape[0]:(num_batch+1)*data.shape[0]-1][:, 1]) * abs(x[-1])
         plt.plot(electric_field[num_batch*data.shape[0]:(num_batch+1)*data.shape[0]-1][:, 0], temp, color='red', label='Electric Field')
         plt.xlabel("Time (a.u.)")
         plt.ylabel("Position (a.u.)")
         plt.title("Density Matrix for psi_history[6]")
+        plt.colorbar(label='Intensity')
+        plt.tight_layout()
+
+        plt.clim(0, 0.001)  # Set color limits for better visibility
+
+    elif "psi_history_1" in hdf5_file["psi_history"]:
+        data = compute_rho(hdf5_file["psi_history"]["psi_history_1"])
+        num_batch = 1
+        plt.figure()
+        plt.imshow(data.T, cmap='turbo', extent=( t[num_batch*data.shape[0]], t[(num_batch+1)*data.shape[0] -1] , x[-1], x[0]), aspect='auto')
+        temp = electric_field[num_batch*data.shape[0]:(num_batch+1)*data.shape[0]-1][:, 1] / np.max(electric_field[num_batch*data.shape[0]:(num_batch+1)*data.shape[0]-1][:, 1]) * abs(x[-1])
+        plt.plot(electric_field[num_batch*data.shape[0]:(num_batch+1)*data.shape[0]-1][:, 0], temp, color='red', label='Electric Field')
+        plt.xlabel("Time (a.u.)")
+        plt.ylabel("Position (a.u.)")
+        plt.title("Density Matrix for psi_history[1]")
         plt.colorbar(label='Intensity')
         plt.tight_layout()
 
@@ -179,3 +194,40 @@ def compute_intensity_from_efield(amplitudes, time, in_au=True):
     total_intensity = np.trapezoid(instantaneous_intensity, time)
     
     return total_intensity/(time[-1]-time[0]), np.max(instantaneous_intensity)  # Return mean and max intensity
+
+
+
+def gabor_transform(a_t, t, sigma, omega_range, omega_steps):
+    """
+    Compute the Gabor transform of a signal a_t at times t with a Gaussian window.
+    basically, it computes the Fourier transform of the signal a_t multiplied by a Gaussian window centered at each time t0.
+    :note: the aim is to look at the evolution of the frequency-component of the signal a_t over time t.
+    :param: a_t: signal to analyze, numpy array of shape (T,)
+    :param: t: time vector, numpy array of shape (T,)
+    :param: sigma: standard deviation of the Gaussian window, float
+    :param: omega_range: tuple (min_omega, max_omega) defining the frequency range for the Gabor transform
+    :param: omega_steps: number of frequency steps in the range, int
+    :return: Gabor transform G, numpy array of shape (omega_steps, T)"""
+    dt = t[1] - t[0]
+    T = len(t)
+
+    # Vecteurs temps et fréquences
+    t = np.array(t)
+    omegas = np.linspace(*omega_range, omega_steps)
+
+    # Création de matrices t0 (centre de fenêtre) et t (temps réel)
+    t0 = t[:, np.newaxis]      # shape (T, 1)
+    t_mat = t[np.newaxis, :]   # shape (1, T)
+
+    # Matrice des fenêtres gaussiennes centrées en t0
+    window = np.exp(-((t_mat - t0)**2) / (2 * sigma**2))  # shape (T, T)
+
+    # Signal multiplié par les fenêtres (shape (T, T))
+    a_windowed = window * a_t[np.newaxis, :]
+
+    # Calcul de la transformée de Gabor pour chaque fréquence (broadcasting)
+    # Résultat final : shape (omega_steps, T)
+    exp_matrix = np.exp(-1j * np.outer(omegas, t))  # shape (omega_steps, T)
+    G = exp_matrix @ a_windowed.T * dt              # produit matriciel
+
+    return G, omegas

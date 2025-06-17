@@ -34,7 +34,7 @@ def potentiel_CAP(x, x_start, x_end, eta_0):
     eta = np.zeros_like(x, dtype=complex)
 
     # Définition de la région où le CAP commence à être appliqué
-    x_cap_start = 1.2 * x_start  # On commence le CAP à 80% de la distance vers la frontière
+    x_cap_start = 1.2 * x_start 
     x_cap_end = 1.2 * x_end
 
     # Calcul du CAP
@@ -72,7 +72,7 @@ def evolve_crank_nikolson(psi, V, E, dt, x):
     dx = x[1] - x[0]  # pas d'espace
     diagonals = [-2*np.ones(Nx), np.ones(Nx-1), np.ones(Nx-1)]
     L = sparse.diags(diagonals, [0, -1, 1], dtype=np.complex128) / dx**2
-    potential = sparse.diags(V, 0, dtype=np.complex128) + sparse.diags(-E * x, 0, dtype=np.complex128)
+    potential = sparse.diags(V, 0, dtype=np.complex128) + sparse.diags(E * x, 0, dtype=np.complex128)       # TODO regarder s il faut un - ou pas dans le potentiel du champ electrique
     assert np.any(potential.data != 0), "Potential matrix should not be zero"
     H = -0.5 * L +  potential # Hamiltonian operator in sparse matrix form
     I = sparse.diags(np.ones(Nx), 0)

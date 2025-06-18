@@ -65,8 +65,34 @@ def plot_direct_info(hdf5_file):
     """
 
     parametres = hdf5_file["simulation_parameters"].attrs
-    x = np.arange(parametres["x_start"], parametres["x_end"], parametres["dx"])
-    t = np.arange(parametres["t_start"], parametres["t_end"], parametres["dt"])
+    x = np.arange(parametres["x_start"], int(parametres["x_end"]), parametres["dx"])
+    t = np.arange(parametres["t_start"], int(parametres["t_end"]), parametres["dt"])
+
+    print(f"[INFO] Simulation parameters:")
+    print(f"  - Space step (dx): {parametres["dx"]:.4e} a.u. ({len(x)} points)")
+    print(f"  - Time step (dt): {parametres["dt"]:.4e} a.u. ({len(t)} points)")
+    print(f"  - Wavelength: {parametres["wavelength"]:.4e} nm")
+    print(f"  - Intensity: {parametres["I_wcm2"]:.4e} W/cm^2")
+
+    wavelength = parametres["wavelength"]  # in nm
+    t_au = 2.418884e-17  # s, atomic unit of time
+    I_wcm2 = parametres["I_wcm2"]  # in W
+    epsilon_0 = 8.8541878128e-12  # vacuum permittivity in F/m
+    E_h = 4.35974e-18  # Hartree energy in J
+    e = 1.602176634e-19  # elementary charge in C
+    a0 = 5.29177210903e-11  # Bohr radius in m
+    c = 299792458  # speed of light in m/s
+    freq = 3e8 / (wavelength * 1e-9)                    # Frequency in Hz, converting nm to m
+    omega_au = 2*np.pi*freq*t_au
+    periode_au = 2*np.pi / omega_au                     # Period in atomic units
+    pulse_duration = 25 * periode_au                    # Pulse duration in atomic units
+    E0_laser = np.sqrt(2/(epsilon_0*c)) * np.sqrt(I_wcm2*1e4) / (E_h/(e*a0))       # from intensity to eletric field in a.u.
+    print(f"[INFO] Laser parameters:"
+        f"\n  - Frequency: {freq:.2e} Hz"
+        f"\n  - Angular frequency (omega_au): {omega_au:.2e} a.u."
+        f"\n  - Period (periode_au): {periode_au:.2e} a.u."
+        f"\n  - Pulse duration: {pulse_duration:.2e} a.u."
+        f"\n  - Electric field amplitude (E0_laser): {E0_laser:.2e} a.u.")
 
     # potential field
     potential_field = hdf5_file["potentials_fields"]["potentiel_spatial"]
@@ -94,9 +120,11 @@ def plot_direct_info(hdf5_file):
     data = compute_rho(hdf5_file["psi_history"]["psi_history_0"])
     num_batch = 0
     plt.figure()
-    plt.imshow(data.T, cmap='turbo', extent=( t[num_batch*data.shape[0]], t[(num_batch+1)*data.shape[0] -1] , x[-1], x[0]), aspect='auto')
+    plt.imshow(data, cmap='turbo', extent=( x[0], x[-1], t[(num_batch+1)*data.shape[0] -1],t[num_batch*data.shape[0]]), aspect='auto')
+    # plt.imshow(data.T, cmap='turbo', extent=( t[num_batch*data.shape[0]], t[(num_batch+1)*data.shape[0] -1] , x[-1], x[0]), aspect='auto')
     temp = electric_field[num_batch*data.shape[0]:(num_batch+1)*data.shape[0]-1][:, 1] / np.max(electric_field[num_batch*data.shape[0]:(num_batch+1)*data.shape[0]-1][:, 1]) * abs(x[-1])
-    plt.plot(electric_field[num_batch*data.shape[0]:(num_batch+1)*data.shape[0]-1][:, 0], temp, color='red', label='Electric Field')
+    plt.plot(temp, electric_field[num_batch*data.shape[0]:(num_batch+1)*data.shape[0]-1][:, 0], color='red', label='Electric Field')
+    # plt.plot(electric_field[num_batch*data.shape[0]:(num_batch+1)*data.shape[0]-1][:, 0], temp, color='red', label='Electric Field')
     plt.legend()
     plt.xlabel("Time (a.u.)")
     plt.ylabel("Position (a.u.)")
@@ -108,13 +136,19 @@ def plot_direct_info(hdf5_file):
 
 
     # plot an example of the density matrix
-    if "psi_history_6" in hdf5_file["psi_history"]:
-        data = compute_rho(hdf5_file["psi_history"]["psi_history_6"])
-        num_batch = 6
+    if "psi_history_6" in hdf5_file["psi_history"] or "psi_history_1" in hdf5_file["psi_history"]:
+        
+        num_batch = 6 if "psi_history_6" in hdf5_file["psi_history"] else 1
+        data = compute_rho(hdf5_file["psi_history"]["psi_history_" + str(num_batch)])
         plt.figure()
-        plt.imshow(data.T, cmap='turbo', extent=( t[num_batch*data.shape[0]], t[(num_batch+1)*data.shape[0] -1] , x[-1], x[0]), aspect='auto')
+        plt.imshow(data)
+        plt.clim(0, 0.001)  # Set color limits for better visibility
+        plt.figure()
+        plt.imshow(data, cmap='turbo', extent=( x[0], x[-1], t[(num_batch+1)*data.shape[0] -1],t[num_batch*data.shape[0]]), aspect='auto')
+        # plt.imshow(data.T, cmap='turbo', extent=( t[num_batch*data.shape[0]], t[(num_batch+1)*data.shape[0] -1] , x[-1], x[0]), aspect='auto')
         temp = electric_field[num_batch*data.shape[0]:(num_batch+1)*data.shape[0]-1][:, 1] / np.max(electric_field[num_batch*data.shape[0]:(num_batch+1)*data.shape[0]-1][:, 1]) * abs(x[-1])
-        plt.plot(electric_field[num_batch*data.shape[0]:(num_batch+1)*data.shape[0]-1][:, 0], temp, color='red', label='Electric Field')
+        # plt.plot(electric_field[num_batch*data.shape[0]:(num_batch+1)*data.shape[0]-1][:, 0], temp, color='red', label='Electric Field')
+        plt.plot(temp, electric_field[num_batch*data.shape[0]:(num_batch+1)*data.shape[0]-1][:, 0], color='red', label='Electric Field')
         plt.xlabel("Time (a.u.)")
         plt.ylabel("Position (a.u.)")
         plt.title("Density Matrix for psi_history[6]")
@@ -123,20 +157,22 @@ def plot_direct_info(hdf5_file):
 
         plt.clim(0, 0.001)  # Set color limits for better visibility
 
-    elif "psi_history_1" in hdf5_file["psi_history"]:
-        data = compute_rho(hdf5_file["psi_history"]["psi_history_1"])
-        num_batch = 1
-        plt.figure()
-        plt.imshow(data.T, cmap='turbo', extent=( t[num_batch*data.shape[0]], t[(num_batch+1)*data.shape[0] -1] , x[-1], x[0]), aspect='auto')
-        temp = electric_field[num_batch*data.shape[0]:(num_batch+1)*data.shape[0]-1][:, 1] / np.max(electric_field[num_batch*data.shape[0]:(num_batch+1)*data.shape[0]-1][:, 1]) * abs(x[-1])
-        plt.plot(electric_field[num_batch*data.shape[0]:(num_batch+1)*data.shape[0]-1][:, 0], temp, color='red', label='Electric Field')
-        plt.xlabel("Time (a.u.)")
-        plt.ylabel("Position (a.u.)")
-        plt.title("Density Matrix for psi_history[1]")
-        plt.colorbar(label='Intensity')
-        plt.tight_layout()
+    # elif "psi_history_1" in hdf5_file["psi_history"]:
+    #     data = compute_rho(hdf5_file["psi_history"]["psi_history_1"])
+    #     num_batch = 1
+    #     plt.figure()
+    #     plt.imshow(data, cmap='turbo', extent=( x[0], x[-1], t[(num_batch+1)*data.shape[0] -1],t[num_batch*data.shape[0]]), aspect='auto')
+    #     # plt.imshow(data.T, cmap='turbo', extent=( t[num_batch*data.shape[0]], t[(num_batch+1)*data.shape[0] -1] , x[-1], x[0]), aspect='auto')
+    #     temp = electric_field[num_batch*data.shape[0]:(num_batch+1)*data.shape[0]-1][:, 1] / np.max(electric_field[num_batch*data.shape[0]:(num_batch+1)*data.shape[0]-1][:, 1]) * abs(x[-1])
+    #     # plt.plot(electric_field[num_batch*data.shape[0]:(num_batch+1)*data.shape[0]-1][:, 0], temp, color='red', label='Electric Field')
+    #     plt.plot(temp, electric_field[num_batch*data.shape[0]:(num_batch+1)*data.shape[0]-1][:, 0], color='red', label='Electric Field')
+    #     plt.xlabel("Time (a.u.)")
+    #     plt.ylabel("Position (a.u.)")
+    #     plt.title("Density Matrix for psi_history[1]")
+    #     plt.colorbar(label='Intensity')
+    #     plt.tight_layout()
 
-        plt.clim(0, 0.001)  # Set color limits for better visibility
+    #     plt.clim(0, 0.001)  # Set color limits for better visibility
 
 
 

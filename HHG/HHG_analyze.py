@@ -18,11 +18,12 @@ t_au = 2.418884e-17  # s, constant for conversion to atomic units
 
 
 # Ouverture du fichier
-with h5py.File(r"C:\maxence_data_results\HHG_simulation\HHG_simulation_pulse_1.0000e-02_5.0000e-02_8.0000e+02_1.0000e+14.h5", "r") as f:
+with h5py.File(r"C:\maxence_data_results\HHG_simulation\HHG_simu_pulse_increase_bound_5.0000e-02_5.0000e-02_8.0000e+02_1.0000e+14.h5", "r") as f:
     parametres = f["simulation_parameters"].attrs
     I_wcm2 = parametres["I_wcm2"]  # in W/cm^2
     plot_direct_info(f)
 
+    # plt.show()
     # calcul du dipole
     print("Calcul du dipole...")
     if "save_the_psi_history" not in parametres:
@@ -43,7 +44,8 @@ with h5py.File(r"C:\maxence_data_results\HHG_simulation\HHG_simulation_pulse_1.0
             t = t[:len(dipole)]
     plt.figure()
     plt.plot(t, dipole)
-    plt.plot(t, f["potentials_fields/champE"][:, 1][np.logical_and(f["potentials_fields/champE"][:, 0] >= t[0], f["potentials_fields/champE"][:, 0] <= t[-1])], label="Electric Field")
+    e_field_to_plot = f["potentials_fields/champE"][:, 1][np.logical_and(f["potentials_fields/champE"][:, 0] >= t[0], f["potentials_fields/champE"][:, 0] <= t[-1])]
+    plt.plot(t, e_field_to_plot/np.max(e_field_to_plot), label="Electric Field")
     plt.xlabel("Time (a.u.)")
     plt.ylabel("Dipole (a.u.)")
     plt.title("Dipole over time")
@@ -99,21 +101,21 @@ with h5py.File(r"C:\maxence_data_results\HHG_simulation\HHG_simulation_pulse_1.0
     plt.grid()
 
 
-    # on essaye d'identifier les trajectoires longues et courtes
-    print("[INFO] Computing Gabor Transform...")
-    # retour, omegas = gabor_transform(dipole, t, 10, (0, 1000), 1)
-    win = gaussian(100, std=25, sym = True)
-    SFT = ShortTimeFFT(win, fs=1/(parametres["dt"]*t_au), hop=10, mfft=2**10)
-    Sx2 = SFT.spectrogram(dipole.real)
-    print(Sx2.shape)
-    plt.figure()
-    plt.imshow(np.abs(Sx2), aspect='auto', extent=SFT.extent(len(dipole.real)), origin='lower', cmap='turbo')
-    plt.colorbar(label='Amplitude')
-    print(list(SFT.extent(len(dipole.real))))
-    print("Frequencies:", SFT.f, "delta_f:", SFT.delta_f)
+    # # on essaye d'identifier les trajectoires longues et courtes
+    # print("[INFO] Computing Gabor Transform...")
+    # # retour, omegas = gabor_transform(dipole, t, 10, (0, 1000), 1)
+    # win = gaussian(100, std=25, sym = True)
+    # SFT = ShortTimeFFT(win, fs=1/(parametres["dt"]*t_au), hop=10, mfft=2**10)
+    # Sx2 = SFT.spectrogram(dipole.real)
+    # print(Sx2.shape)
+    # plt.figure()
+    # plt.imshow(np.abs(Sx2), aspect='auto', extent=SFT.extent(len(dipole.real)), origin='lower', cmap='turbo')
+    # plt.colorbar(label='Amplitude')
+    # print(list(SFT.extent(len(dipole.real))))
+    # print("Frequencies:", SFT.f, "delta_f:", SFT.delta_f)
 
-    plt.figure()
-    plt.plot(t, np.unwrap(np.angle(dipole)))
+    # plt.figure()
+    # plt.plot(t, np.unwrap(np.angle(dipole)))
 
 
 

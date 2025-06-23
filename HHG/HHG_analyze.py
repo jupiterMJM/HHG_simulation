@@ -18,7 +18,7 @@ t_au = 2.418884e-17  # s, constant for conversion to atomic units
 
 
 # Ouverture du fichier
-with h5py.File(r"C:\maxence_data_results\HHG_simulation\HHG_simulation_with_momentum_1.0000e-02_5.0000e-02_8.0000e+02_1.0000e+14.h5", "r") as f:
+with h5py.File(r"C:\maxence_data_results\HHG_simulation\HHG_simulation_linear_constant_1.0000e-02_5.0000e-02_8.0000e+02_1.0000e+14.h5", "r") as f:
     parametres = f["simulation_parameters"].attrs
     I_wcm2 = parametres["I_wcm2"]  # in W/cm^2
     plot_direct_info(f)
@@ -34,14 +34,35 @@ with h5py.File(r"C:\maxence_data_results\HHG_simulation\HHG_simulation_with_mome
         dipole, t = compute_dipole(f)
     else:
         dipole = np.array([])
-        for batch in sorted(f["wavepacket_characteristics/dipole_on_itself"], key=lambda x: int(x.split('_')[-1])):
+
+        for batch in sorted(f["wavepacket_characteristics/dipole_on_fonda"], key=lambda x: int(x.split('_')[-1])):
             # print("HELLLLLLO", f[f"wavepacket_characteristics/dipole_on_fonda/{batch}"])
-            dipole = np.append(dipole, np.array(f[f"wavepacket_characteristics/dipole_on_itself/{batch}"]))
-        
-        
+            dipole = np.append(dipole, np.array(f[f"wavepacket_characteristics/dipole_on_fonda/{batch}"]))
+
+        momentum = None
+        if "momentum_on_itself" in f["wavepacket_characteristics"]:
+            momentum = np.array([])
+            for batch in sorted(f["wavepacket_characteristics/momentum_on_itself"], key=lambda x: int(x.split('_')[-1])):
+                momentum = np.append(momentum, np.array(f[f"wavepacket_characteristics/momentum_on_itself/{batch}"]))
+
+
         t = f["potentials_fields/champE"][:, 0]     # more explicit
         if len(t) > len(dipole):
             t = t[:len(dipole)]
+
+        if momentum is not None and len(t) > len(momentum):
+            plt.figure()
+            plt.plot(t, momentum, label="Momentum")
+            e_field_to_plot = f["potentials_fields/champE"][:, 1][np.logical_and(f["potentials_fields/champE"][:, 0] >= t[0], f["potentials_fields/champE"][:, 0] <= t[-1])]
+            plt.plot(t, e_field_to_plot/np.max(e_field_to_plot), label="Electric Field")
+            plt.xlabel("Time (a.u.)")
+            plt.ylabel("Momentum (a.u.)")
+            plt.title("Momentum over time")
+            plt.grid()
+            plt.tight_layout()
+            
+        
+        
     plt.figure()
     plt.plot(t, dipole)
     e_field_to_plot = f["potentials_fields/champE"][:, 1][np.logical_and(f["potentials_fields/champE"][:, 0] >= t[0], f["potentials_fields/champE"][:, 0] <= t[-1])]

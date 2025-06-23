@@ -130,7 +130,7 @@ def plot_direct_info(hdf5_file):
     plt.legend()
     plt.xlabel("Time (a.u.)")
     plt.ylabel("Position (a.u.)")
-    plt.title("Density Matrix for psi_history[0]")
+    plt.title("Density probability evolution for psi_history[0]")
     plt.colorbar(label='Intensity')
     plt.tight_layout()
     plt.clim(0, 0.001)  # Set color limits for better visibility
@@ -153,7 +153,7 @@ def plot_direct_info(hdf5_file):
         plt.plot(temp, electric_field[num_batch*data.shape[0]:(num_batch+1)*data.shape[0]-1][:, 0], color='red', label='Electric Field')
         plt.ylabel("Time (a.u.)")
         plt.xlabel("Position (a.u.)")
-        plt.title("Density Matrix for psi_history[6]")
+        plt.title("Density probability evolution for psi_history[6]")
         plt.colorbar(label='Intensity')
         plt.tight_layout()
 
@@ -184,7 +184,7 @@ def plot_direct_info(hdf5_file):
         plt.title(f"Dipole Moment (not summed) for psi_history[{num_batch}]")
         plt.colorbar(label='Dipole Moment (a.u.)')
         plt.tight_layout()
-        plt.clim(0, 0.01)
+        plt.clim(0, 0.001)
 
     # elif "psi_history_1" in hdf5_file["psi_history"]:
     #     data = compute_rho(hdf5_file["psi_history"]["psi_history_1"])

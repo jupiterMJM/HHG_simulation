@@ -30,7 +30,7 @@ I_wcm2 = 1e14  # Intensity in W/cm^2, NOT IN A.U. the conversion is done later
 # parameters of the simulation
 time_range = np.linspace(0, 20, 4000)  # time range in fs, NOT IN A.U. the conversion is done later
 step_ionization = .01  # fs, time step for ionization, NOT IN A.U. the conversion is done later
-plot_in_au = True  # if True, the time is plotted in atomic units, if False, the time is plotted in fs
+plot_in_au = False  # if True, the time is plotted in atomic units, if False, the time is plotted in fs
 
 # constants in atomic units
 E_h = 4.35974e-18  # J, Hartree energy
@@ -181,7 +181,7 @@ cbar = plt.colorbar(sm, ax=ax)
 cbar.set_label("Return Energy (eV)")
 
 if not plot_in_au:
-    ax.plot(time_range, E_laser(time_range*1e-15), 'r--', label='Laser Field')  # convert time to seconds for plotting, amplitude is arbitrary for visualization
+    ax.plot(time_range, E_laser(time_range*1e-15)/np.max( E_laser(time_range*1e-15))*5, 'r--', label='Laser Field')  # convert time to seconds for plotting, amplitude is arbitrary for visualization
 else:
     # ax.plot(time_range * 1e-15 / 2.418884e-17, E_laser(time_range*1e-15)/(E_h/(e*a0)), 'r--', label='Laser Field')
     ax.plot(time_range * 1e-15 / 2.418884e-17, E_laser(time_range*1e-15)/np.max( E_laser(time_range*1e-15))*50, 'r--', label='Laser Field')

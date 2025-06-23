@@ -28,7 +28,7 @@ ionization_potential = 15.76  # eV, NOT IN A.U. the conversion is done later, wh
 # parameters of the simulation
 time_range = np.linspace(0, 10, 2000)  # time range in fs, NOT IN A.U. the conversion is done later
 step_ionization = .01  # fs, time step for ionization, NOT IN A.U. the conversion is done later
-plot_in_au = True  # if True, the time is plotted in atomic units, if False, the time is plotted in fs
+plot_in_au = False  # if True, the time is plotted in atomic units, if False, the time is plotted in fs
 ############################################################################################
 
 

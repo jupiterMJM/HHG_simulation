@@ -20,69 +20,17 @@ from tqdm import tqdm
 ## in order to go from curves to a matrix of mask
 ############################################################################################
 
-# def blend_pixel_matrices(matrix1, alpha1, matrix2, alpha2):
-#     """
-#     Blend two matrices of pixels with their respective alpha values.
-
-#     Parameters:
-#     matrix1 (numpy.ndarray): RGB values of the first matrix of pixels.
-#     alpha1 (float): Alpha value of the first matrix.
-#     matrix2 (numpy.ndarray): RGB values of the second matrix of pixels.
-#     alpha2 (float): Alpha value of the second matrix.
-
-#     Returns:
-#     numpy.ndarray: Blended matrix of RGB values.
-#     """
-#     # Ensure the matrices are of the same shape
-#     if matrix1.shape != matrix2.shape:
-#         raise ValueError("Matrices must be of the same shape")
-
-#     # Initialize the resulting matrix
-#     blended_matrix = np.zeros_like(matrix1, dtype=float)
-#     # blended_matrix[blended_matrix == 0] = None  # Initialize with None for empty pixels
-
-#     # Calculate the resulting alpha
-#     alpha = alpha1 + alpha2 * (1 - alpha1)
-
-#     # Blend each pixel
-#     for i in range(matrix1.shape[0]):
-#         for j in range(matrix1.shape[1]):
-#             pixel1 = matrix1[i, j]
-#             pixel2 = matrix2[i, j]
-            
-#             # Calculate the blended RGB values
-#             R = (pixel1[0] * alpha1 + pixel2[0] * alpha2 * (1 - alpha1)) / alpha
-#             G = (pixel1[1] * alpha1 + pixel2[1] * alpha2 * (1 - alpha1)) / alpha
-#             B = (pixel1[2] * alpha1 + pixel2[2] * alpha2 * (1 - alpha1)) / alpha
-            
-#             blended_matrix[i, j] = (R, G, B)
-
-#     return blended_matrix, alpha
-
-def blend_pixel_matrices(matrix1, alpha1, matrix2, alpha2):
+def blend_pixel_matrices(matrix1:np.array, matrix2:np.array) -> np.array:
     """
-    Blend two matrices of pixels with their respective alpha values.
-
-    Parameters:
-    matrix1 (numpy.ndarray): RGB values of the first matrix of pixels.
-    alpha1 (float): Alpha value of the first matrix.
-    matrix2 (numpy.ndarray): RGB values of the second matrix of pixels.
-    alpha2 (float): Alpha value of the second matrix.
-
-    Returns:
-    numpy.ndarray: Blended matrix of RGB values.
+    Blends two matrices pixel by pixel, returning a new matrix where each pixel is taken from matrix2 if it is non-zero,
+    non-NaN, and not None; otherwise, it takes the pixel from matrix1.
+    :param matrix1: First input matrix.
+    :param matrix2: Second input matrix.
+    :return: Blended matrix.
     """
-    # Ensure the matrices are of the same shape
-    if matrix1.shape != matrix2.shape:
-        raise ValueError("Matrices must be of the same shape")
+    retour = np.where(np.logical_and(matrix2 != 0, matrix2 != None), matrix2, matrix1)
+    return np.array(retour, dtype=float)
 
-    # Calculate the resulting alpha
-    alpha = alpha1 + alpha2 * (1 - alpha1)
-
-    # Blend the matrices
-    blended_matrix = (matrix1 * alpha1 + matrix2 * alpha2 * (1 - alpha1)) / alpha
-
-    return blended_matrix, alpha
 
 
 
@@ -175,42 +123,44 @@ def generate_mask_from_classical(time_grid, position_grid, E_field, time_grid_zo
     Returns:
     numpy.ndarray: Final mask representing the classical trajectories.
     """
-    cmap = cm.turbo
+    # cmap = cm.turbo
     norm = mcolors.Normalize(vmin=0, vmax=10)
-    retour = np.zeros((len(position_grid_zoomed), len(time_grid_zoomed), 3), dtype=float)
-    retour[retour==0] = None  # Initialize with None for empty pixels
-    alpha_retour = .5
+    retour = np.zeros((len(position_grid_zoomed), len(time_grid_zoomed)), dtype=float)
+    # retour[retour==0] = None  # Initialize with None for empty pixels
+    # alpha_retour = .5
 
     for time_ionization in tqdm(time_grid[1:]):
-        print(f"Processing ionization time: {time_ionization} s")
+        # print(f"Processing ionization time: {time_ionization} s")
         t = time_grid[time_grid >= time_ionization]
 
         # Integrate the equations of motion for the electron
         result = integration_laws_of_motion(t, E_field, x0=0, v0=0)
-        print(f"Integration result got")
+        # print(f"Integration result got")
         if not result.success or len(result.y) == 0:
-            print(f"Integration failed for time {time_ionization}. Skipping this trajectory.")
+            # print(f"Integration failed for time {time_ionization}. Skipping this trajectory.")
             continue
         # Extract position and velocity
         x = result.y[0]
         v = result.y[1]
 
         if np.all(x[1:] * x[1] > 0): # if the electron is always on the same side of the ion
-            alpha = 0.3 # transparency for the mask
-            color = cmap(norm(0))
+            # alpha = 0.3 # transparency for the mask
+            color = norm(0.1)
         else:
+            
             t_recombination = t[np.where(np.diff(np.sign(x[1:])))[0][0]]  # find the time of recombination
             x = x[t <= t_recombination]  # only keep the position before recombination
             v_recomb = v[t== t_recombination][0]  # velocity at recombination
             t = t[t <= t_recombination]  # only keep the time before recombination
             
-            energy_recomb = 0.5 * m_e * v_recomb**2  # kinetic energy at recombination
+            energy_recomb = 0.5 * m_e * v_recomb**2/e  # kinetic energy at recombination
 
-            color =cmap(norm(energy_recomb))
-            alpha = 0.5
+            color = norm(energy_recomb)+0.1 # TODO modify
+            print(f"Electron recombining at time {time_ionization} s, energy at recombination: {energy_recomb:.2e} J, velocity: {v_recomb:.2e} m/s, color: {color:.2f}")
+            # alpha = 0.5
         
         # plt.figure()
-        # plt.plot(t, x, color=color[:3], alpha=alpha, label=f'Ionization at {time_ionization:.2f} fs')
+        # plt.plot(t, x, label=f'Ionization at {time_ionization:.2f} fs')
 
         # t = t[np.logical_and(x >= position_grid_zoomed[0], x <= position_grid_zoomed[-1])]
         # x = x[np.logical_and(x >= position_grid_zoomed[0], x <= position_grid_zoomed[-1])]
@@ -218,10 +168,10 @@ def generate_mask_from_classical(time_grid, position_grid, E_field, time_grid_zo
         x = x[np.logical_and(t >= time_grid_zoomed[0], t <= time_grid_zoomed[-1])]
         t = t[np.logical_and(t >= time_grid_zoomed[0], t <= time_grid_zoomed[-1])]
         if len(t) == 0 or len(x) == 0:
-            print(f"No valid trajectory points found for time {time_ionization}. Skipping this trajectory.")
+            # print(f"No valid trajectory points found for time {time_ionization}. Skipping this trajectory.")
             continue
-        print(alpha, color)
-        print(t, x)
+        # print(alpha, color)
+        # print(t, x)
         # plt.figure()
         # plt.scatter(t, x, color=color[:3], alpha=alpha, s=1, label=f'Ionization at {time_ionization:.2f} fs')
         # plt.show()
@@ -231,62 +181,38 @@ def generate_mask_from_classical(time_grid, position_grid, E_field, time_grid_zo
         # plt.figure()
         # plt.imshow(mask, cmap="grey", aspect='auto', extent=(time_grid_zoomed[0], time_grid_zoomed[-1], position_grid_zoomed[0], position_grid_zoomed[-1]))
 
-        mask_rgb = np.zeros((len(position_grid_zoomed), len(time_grid_zoomed), 3), dtype=float)
-        mask_rgb[mask] = color[:3]
-        mask_rgb[~mask] = None
-        plt.figure()
-        plt.imshow(mask_rgb, aspect='auto', extent=(time_grid_zoomed[0], time_grid_zoomed[-1], position_grid_zoomed[0], position_grid_zoomed[-1]))
-        plt.title(f"Mask for ionization at {time_ionization:.2f} s")
-        # plt.show()
+        mask_color = np.zeros((len(position_grid_zoomed), len(time_grid_zoomed)), dtype=float)
+        mask_color[mask] = color
+        # mask_color[~mask] = 0
+        # plt.figure()
+        # plt.imshow(mask_color, aspect='auto', extent=(time_grid_zoomed[0], time_grid_zoomed[-1], position_grid_zoomed[0], position_grid_zoomed[-1]), cmap='grey')
+        # plt.title(f"Mask for ionization at {time_ionization:.2f} s")
+        # plt.colorbar()
+        # # plt.show()
         # Blend the mask with the existing matrix
 
-        retour, alpha_retour = blend_pixel_matrices(retour, alpha_retour, mask_rgb, alpha)
-        plt.figure()
-        plt.imshow(retour, aspect='auto', extent=(time_grid_zoomed[0], time_grid_zoomed[-1], position_grid_zoomed[0], position_grid_zoomed[-1]))
-        plt.show()
+        # plt.figure()
+        # plt.imshow(retour, aspect='auto', extent=(time_grid_zoomed[0], time_grid_zoomed[-1], position_grid_zoomed[0], position_grid_zoomed[-1]), cmap='grey')
+        # plt.title("Current state of the mask")
+        # plt.colorbar()
+        # plt.show()
+
+        retour = blend_pixel_matrices(retour, mask_color)
+        # plt.figure()
+        # plt.imshow(retour, aspect='auto', extent=(time_grid_zoomed[0], time_grid_zoomed[-1], position_grid_zoomed[0], position_grid_zoomed[-1]), cmap='grey')
+        # plt.title("Blended mask after processing current trajectory")
+        # plt.colorbar()
+        # plt.show()
 
     return retour
 
 
 if __name__ == "__main__":
 
-    # plt.imshow(genere_array_modified(np.linspace(0, 10, 100), np.linspace(0, 10, 100), np.linspace(0, 10, 100), np.linspace(0, 10, 100)))
-    # plt.show()
-
-
-    # Génère une matrice RGB 10x10x3 avec la diagonale bleue, la 1ère sous-diagonale rouge et la 10e verte
-    rgb_matrix = np.zeros((10, 10, 3), dtype=float)
-
-    # Diagonale principale (bleu)
-    for i in range(10):
-        rgb_matrix[i, i] = [0, 0, 1]
-
-    # 1ère sous-diagonale (rouge)
-    for i in range(1, 10):
-        rgb_matrix[i, i - 1] = [1, 0, 0]
-
-    # 10e sous-diagonale (verte) : i=9, j=-1 (hors matrice), donc on met la dernière colonne à la dernière ligne
-    rgb_matrix[9, 0] = [0, 1, 0]
-    # rgb_matrix[np.all(rgb_matrix == [0, 0, 0], axis=-1)] = 1  # Initialize with None for empty pixels
-
-    plt.figure()
-    plt.imshow(rgb_matrix)
-    plt.title("Matrice RGB : diagonale bleue, 1ère sous-diagonale rouge, 10e verte")
-    # plt.show()
-
-    test = np.zeros((10, 10, 3), dtype=float)
-    # test[test == 0] = None  # Initialize with None for empty pixels
-    blended_matrix, alpha = blend_pixel_matrices(test, 0.5, rgb_matrix, 1)
-    print(rgb_matrix)
-    print(blended_matrix.shape)
-    plt.figure()
-    plt.imshow(blended_matrix, alpha=alpha)
-    plt.colorbar()
-    plt.show()
 
     # Example usage
-    time_grid = np.linspace(0, 100, 100)*1e-15  # Time grid in seconds
-    position_grid = np.linspace(-10e-7, 10e-7, 100)  # Position grid in meters
+    time_grid = np.linspace(-10, 10, 1000)*1e-15  # Time grid in seconds
+    position_grid = np.linspace(-15e-9, 15e-9, 100)  # Position grid in meters
 
     def E_field(t):
         """ Example electric field function. Replace with actual field calculation. """
@@ -296,11 +222,14 @@ if __name__ == "__main__":
         E0 = np.sqrt(I_wcm2 * 1e4 / (c*epsilon_0))  # electric field amplitude in V/m
         return E0 * np.sin(omega * t)
 
-    time_grid_zoomed = time_grid[25:75]  # Zoomed time grid (middle part)
+    time_grid_zoomed = time_grid[250:750]  # Zoomed time grid (middle part)
     position_grid_zoomed = position_grid[25:75]  # Zoomed position grid (middle part)
 
     print("Generating mask from classical trajectories...")
     mask = generate_mask_from_classical(time_grid, position_grid, E_field, time_grid_zoomed, position_grid_zoomed)
     print("Mask generation complete.")
-    plt.imshow(mask)
+    plt.imshow(mask, cmap='turbo', aspect='auto',
+               extent=(time_grid_zoomed[0], time_grid_zoomed[-1], position_grid_zoomed[0], position_grid_zoomed[-1]))
+    plt.colorbar(label='Mask Value')
+    plt.title("Generated Mask from Classical Trajectories")
     plt.show()

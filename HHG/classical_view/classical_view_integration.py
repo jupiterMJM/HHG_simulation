@@ -28,7 +28,7 @@ I_wcm2 = 1e14  # Intensity in W/cm^2, NOT IN A.U. the conversion is done later
 
 
 # parameters of the simulation
-time_range = np.linspace(0, 20, 4000)  # time range in fs, NOT IN A.U. the conversion is done later
+time_range = np.linspace(-20, 20, 4000)  # time range in fs, NOT IN A.U. the conversion is done later
 step_ionization = .01  # fs, time step for ionization, NOT IN A.U. the conversion is done later
 plot_in_au = False  # if True, the time is plotted in atomic units, if False, the time is plotted in fs
 
@@ -136,6 +136,9 @@ for time_ionization in tqdm(np.arange(0, time_range[-1], step_ionization)):
     
 
     retour = integration_laws_of_motion(t, E_laser, x0=0, v0=v_initial)
+    if retour.success is False or len(retour.y) == 0:
+        # print(f"Integration failed for ionization at {time_ionization} fs")
+        continue
     x = retour.y[0]  # position of the electron in m, first row
     v = retour.y[1]  # velocity of the electron in m/s, second row
 
@@ -185,4 +188,7 @@ if not plot_in_au:
 else:
     # ax.plot(time_range * 1e-15 / 2.418884e-17, E_laser(time_range*1e-15)/(E_h/(e*a0)), 'r--', label='Laser Field')
     ax.plot(time_range * 1e-15 / 2.418884e-17, E_laser(time_range*1e-15)/np.max( E_laser(time_range*1e-15))*50, 'r--', label='Laser Field')
+
+
+
 plt.show()

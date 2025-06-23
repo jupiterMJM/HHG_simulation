@@ -1,24 +1,26 @@
-def blend_pixel_matrices(matrix1, alpha1, matrix2, alpha2):
+import numpy as np
+import matplotlib.pyplot as plt
+
+def blend_pixel_matrices(matrix1:np.array, matrix2:np.array) -> np.array:
     """
-    Blend two matrices of pixels with their respective alpha values.
-
-    Parameters:
-    matrix1 (numpy.ndarray): RGB values of the first matrix of pixels.
-    alpha1 (float): Alpha value of the first matrix.
-    matrix2 (numpy.ndarray): RGB values of the second matrix of pixels.
-    alpha2 (float): Alpha value of the second matrix.
-
-    Returns:
-    numpy.ndarray: Blended matrix of RGB values.
+    Blends two matrices pixel by pixel, returning a new matrix where each pixel is taken from matrix2 if it is non-zero,
+    non-NaN, and not None; otherwise, it takes the pixel from matrix1.
+    :param matrix1: First input matrix.
+    :param matrix2: Second input matrix.
+    :return: Blended matrix.
     """
-    # Ensure the matrices are of the same shape
-    if matrix1.shape != matrix2.shape:
-        raise ValueError("Matrices must be of the same shape")
+    retour = np.where(np.logical_and(matrix2 != 0, matrix2 != None), matrix2, matrix1)
+    return np.array(retour, dtype=float)
 
-    # Calculate the resulting alpha
-    alpha = alpha1 + alpha2 * (1 - alpha1)
 
-    # Blend the matrices
-    blended_matrix = (matrix1 * alpha1 + matrix2 * alpha2 * (1 - alpha1)) / alpha
-
-    return blended_matrix, alpha
+test1 = np.diag([1, 1, 1, 1, 1], k=0)  # Example usage of np.diag to create a diagonal matrix
+test2 = np.array([[None, None, None, 5, None],
+               [2, None, None, None, None],
+               [None, None, None, None, 3],
+               [None, None, None, 4, None],
+               [5, None, None, None, 6]])
+retour = blend_pixel_matrices(test1, test2)
+print(retour)
+plt.imshow(retour)
+plt.colorbar()
+plt.show()

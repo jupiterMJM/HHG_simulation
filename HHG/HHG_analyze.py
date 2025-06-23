@@ -18,7 +18,7 @@ t_au = 2.418884e-17  # s, constant for conversion to atomic units
 
 
 # Ouverture du fichier
-with h5py.File(r"C:\maxence_data_results\HHG_simulation\HHG_simu_pulse_increase_bound_5.0000e-02_5.0000e-02_8.0000e+02_1.0000e+14.h5", "r") as f:
+with h5py.File(r"C:\maxence_data_results\HHG_simulation\HHG_simulation_with_momentum_1.0000e-02_5.0000e-02_8.0000e+02_1.0000e+14.h5", "r") as f:
     parametres = f["simulation_parameters"].attrs
     I_wcm2 = parametres["I_wcm2"]  # in W/cm^2
     plot_direct_info(f)
@@ -34,9 +34,9 @@ with h5py.File(r"C:\maxence_data_results\HHG_simulation\HHG_simu_pulse_increase_
         dipole, t = compute_dipole(f)
     else:
         dipole = np.array([])
-        for batch in sorted(f["wavepacket_characteristics/dipole_on_fonda"], key=lambda x: int(x.split('_')[-1])):
+        for batch in sorted(f["wavepacket_characteristics/dipole_on_itself"], key=lambda x: int(x.split('_')[-1])):
             # print("HELLLLLLO", f[f"wavepacket_characteristics/dipole_on_fonda/{batch}"])
-            dipole = np.append(dipole, np.array(f[f"wavepacket_characteristics/dipole_on_fonda/{batch}"]))
+            dipole = np.append(dipole, np.array(f[f"wavepacket_characteristics/dipole_on_itself/{batch}"]))
         
         
         t = f["potentials_fields/champE"][:, 0]     # more explicit

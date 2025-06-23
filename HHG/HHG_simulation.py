@@ -48,7 +48,7 @@ I_wcm2 = 1e14                                       # Intensity in W/cm^2, NOT I
 main_directory = "C:/maxence_data_results/HHG_simulation/"
 # file_psi = main_directory + f"psi_history_{dx:.4e}_{dt:.4e}_{wavelength:.4e}_{I_wcm2:.4e}.h5"  # File to save the wavefunction history
 # file_psi_fonda = main_directory + f"psi_fonda_history_{dx:.4e}_{dt:.4e}_{wavelength:.4e}_{I_wcm2:.4e}.h5"  # File to save the fundamental wavefunction history
-file_output = main_directory + f"HHG_simu_pulse_increase_bound_{dx:.4e}_{dt:.4e}_{wavelength:.4e}_{I_wcm2:.4e}.h5"  # File to save all the results
+file_output = main_directory + f"HHG_simulation_with_momentum_{dx:.4e}_{dt:.4e}_{wavelength:.4e}_{I_wcm2:.4e}.h5"  # File to save all the results
 
 # Initial wavefunction
 psi_init = np.exp(-np.abs(x))                       # will be used both as initial wavefunction and as initial fondamental wavefunction
@@ -99,7 +99,7 @@ print(f"[INFO] Laser parameters:"
         f"\n  - Electric field amplitude (E0_laser): {E0_laser:.2e} a.u.")
 
 # Calcul de l'amplitude du laser en a.u.
-champE_func = lambda x, t: E0_laser*np.cos(omega_au * t) * envelope_pulse(t, periode_au=periode_au)
+champE_func = lambda x, t: E0_laser*np.cos(omega_au * t) * envelope(t, periode_au=periode_au)
 champE = champE_func(x[:, None], t)                 # Champ électrique en fonction de x et t
 
 # Calcul du potentiel atomique
@@ -155,9 +155,10 @@ with h5py.File(file_output, 'w') as f:
     charac = f.create_group("wavepacket_characteristics")
     charac.create_group("dipole_on_fonda")
     charac.create_group("dipole_on_itself")
+    charac.create_group("momentum_on_fonda")
+    charac.create_group("momentum_on_itself")
     if not charact_only_save_dipole:
-        charac.create_group("momentum_on_fonda")
-        charac.create_group("momentum_on_itself")
+        
         charac.create_group("scalar_product_fonda")
         charac.create_group("kinetic_energy")
         charac.create_group("stdx_fonda")
@@ -223,9 +224,10 @@ for En in tqdm(champE):
             with h5py.File(file_output, 'a') as f:
                 f["wavepacket_characteristics/dipole_on_fonda"].create_dataset(f'dipole_on_fonda_{buffer_number}', data=dipole_on_fonda)
                 f["wavepacket_characteristics/dipole_on_itself"].create_dataset(f'dipole_on_itself_{buffer_number}', data=dipole_on_itself)
+                f["wavepacket_characteristics/momentum_on_fonda"].create_dataset(f'momentum_on_fonda_{buffer_number}', data=momentum_on_fonda)
+                f["wavepacket_characteristics/momentum_on_itself"].create_dataset(f'momentum_on_itself_{buffer_number}', data=momentum_on_itself)
                 if not charact_only_save_dipole:
-                    f["wavepacket_characteristics/momentum_on_fonda"].create_dataset(f'momentum_on_fonda_{buffer_number}', data=momentum_on_fonda)
-                    f["wavepacket_characteristics/momentum_on_itself"].create_dataset(f'momentum_on_itself_{buffer_number}', data=momentum_on_itself)
+                    
                     f["wavepacket_characteristics/scalar_product_fonda"].create_dataset(f'scalar_product_fonda_{buffer_number}', data=scalar_product_fonda)
                     f["wavepacket_characteristics/kinetic_energy"].create_dataset(f'kinetic_energy_{buffer_number}', data=kinetic_energy)
                     f["wavepacket_characteristics/stdx_fonda"].create_dataset(f'stdx_fonda_{buffer_number}', data=stdx_fonda)
@@ -282,9 +284,10 @@ if save_with_buffer:
             with h5py.File(file_output, 'a') as f:
                 f["wavepacket_characteristics/dipole_on_fonda"].create_dataset(f'dipole_on_fonda_{buffer_number}', data=dipole_on_fonda)
                 f["wavepacket_characteristics/dipole_on_itself"].create_dataset(f'dipole_on_itself_{buffer_number}', data=dipole_on_itself)
+                f["wavepacket_characteristics/momentum_on_fonda"].create_dataset(f'momentum_on_fonda_{buffer_number}', data=momentum_on_fonda)
+                f["wavepacket_characteristics/momentum_on_itself"].create_dataset(f'momentum_on_itself_{buffer_number}', data=momentum_on_itself)
                 if not charact_only_save_dipole:
-                    f["wavepacket_characteristics/momentum_on_fonda"].create_dataset(f'momentum_on_fonda_{buffer_number}', data=momentum_on_fonda)
-                    f["wavepacket_characteristics/momentum_on_itself"].create_dataset(f'momentum_on_itself_{buffer_number}', data=momentum_on_itself)
+                    
                     f["wavepacket_characteristics/scalar_product_fonda"].create_dataset(f'scalar_product_fonda_{buffer_number}', data=scalar_product_fonda)
                     f["wavepacket_characteristics/kinetic_energy"].create_dataset(f'kinetic_energy_{buffer_number}', data=kinetic_energy)
                     f["wavepacket_characteristics/stdx_fonda"].create_dataset(f'stdx_fonda_{buffer_number}', data=stdx_fonda)

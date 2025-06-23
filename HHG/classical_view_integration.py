@@ -28,9 +28,18 @@ I_wcm2 = 1e14  # Intensity in W/cm^2, NOT IN A.U. the conversion is done later
 
 
 # parameters of the simulation
-time_range = np.linspace(0, 10, 2000)  # time range in fs, NOT IN A.U. the conversion is done later
+time_range = np.linspace(0, 20, 4000)  # time range in fs, NOT IN A.U. the conversion is done later
 step_ionization = .01  # fs, time step for ionization, NOT IN A.U. the conversion is done later
 plot_in_au = True  # if True, the time is plotted in atomic units, if False, the time is plotted in fs
+
+# constants in atomic units
+E_h = 4.35974e-18  # J, Hartree energy
+a0 = 5.29177210903e-11  # m, Bohr radius
+# constants in SI units
+c = 299792458  # m/s, speed of light
+m_e = 9.10938356e-31  # kg, electron mass
+e = 1.602176634e-19  # C, elementary charge
+
 ############################################################################################
 
 
@@ -62,6 +71,31 @@ def integration_laws_of_motion(t, E_laser, x0=0, v0=0):
     return solve_ivp(dXdt, t_span = [t[0], t[-1]], y0=[x0, v0], t_eval=t)
 
 
+def envelope(t, periode_au):
+    """
+    génère une enveloppe temporelle pour le laser
+    :param t: tableau numpy de temps en a.u.
+    :param periode_au: période du laser en a.u.
+    :return: tableau numpy de l'enveloppe temporelle
+
+    :note: l'enveloppe est une rampe de montée puis un plateau constant
+    """
+    t1 = time_range[0] + periode_au * 4
+    env = np.zeros_like(t, dtype=float)
+    
+    if type(t) is np.ndarray:
+        retour = np.zeros_like(t, dtype=float)
+        retour[t < t1] = (t[t < t1] - time_range[0]) / (t1 - time_range[0])
+        retour[t >= t1] = 1.0
+        return retour
+    else:
+        if t < t1:
+            env = (t - time_range[0]) / (t1 - time_range[0])
+        else:
+            env = 1.0
+    return env
+
+
 def E_laser(t):
     """ this function returns the laser field at time t in V/m
     :param t: time in s
@@ -70,7 +104,7 @@ def E_laser(t):
 
     omega = 2 * np.pi * c / wavelength  # angular frequency in rad/s
     E0 = np.sqrt(I_wcm2 * 1e4 / (c*epsilon_0))  # electric field amplitude in V/m
-    return E0 * np.sin(omega * t)  # sinusoidal laser field
+    return E0 * np.sin(omega * t)*envelope(t, periode_au=2*np.pi/omega)  # sinusoidal laser field
     
 
 
@@ -147,7 +181,8 @@ cbar = plt.colorbar(sm, ax=ax)
 cbar.set_label("Return Energy (eV)")
 
 if not plot_in_au:
-    ax.plot(time_range, 3*np.sin(omega * time_range * 1e-15), 'r--', label='Laser Field')  # convert time to seconds for plotting, amplitude is arbitrary for visualization
+    ax.plot(time_range, E_laser(time_range*1e-15), 'r--', label='Laser Field')  # convert time to seconds for plotting, amplitude is arbitrary for visualization
 else:
-    ax.plot(time_range * 1e-15 / 2.418884e-17, 3*np.sin(omega * time_range * 1e-15) *1e-9/ 5.29177210903e-11, 'r--', label='Laser Field')
+    # ax.plot(time_range * 1e-15 / 2.418884e-17, E_laser(time_range*1e-15)/(E_h/(e*a0)), 'r--', label='Laser Field')
+    ax.plot(time_range * 1e-15 / 2.418884e-17, E_laser(time_range*1e-15)/np.max( E_laser(time_range*1e-15))*50, 'r--', label='Laser Field')
 plt.show()

@@ -65,8 +65,10 @@ def plot_direct_info(hdf5_file):
     """
 
     parametres = hdf5_file["simulation_parameters"].attrs
-    x = np.arange(parametres["x_start"], int(parametres["x_end"]), parametres["dx"])
-    t = np.arange(parametres["t_start"], int(parametres["t_end"]), parametres["dt"])
+    x = np.arange(parametres["x_start"], round(parametres["x_end"], 0), parametres["dx"])
+    print("YOIIIIIIIIIIIIIIII", parametres["x_start"], int(parametres["x_end"]), parametres["dx"])
+    print("YAAAAAAAAAAAAAAA", x.shape, x[0], x[-1], x[1]-x[0])
+    t = np.arange(parametres["t_start"], round(parametres["t_end"], 0), parametres["dt"])
 
     print(f"[INFO] Simulation parameters:")
     print(f"  - Space step (dx): {parametres["dx"]:.4e} a.u. ({len(x)} points)")
@@ -128,7 +130,7 @@ def plot_direct_info(hdf5_file):
     plt.legend()
     plt.xlabel("Time (a.u.)")
     plt.ylabel("Position (a.u.)")
-    plt.title("Density Matrix for psi_history[6]")
+    plt.title("Density Matrix for psi_history[0]")
     plt.colorbar(label='Intensity')
     plt.tight_layout()
     plt.clim(0, 0.001)  # Set color limits for better visibility
@@ -140,22 +142,49 @@ def plot_direct_info(hdf5_file):
         
         num_batch = 6 if "psi_history_6" in hdf5_file["psi_history"] else 1
         data = compute_rho(hdf5_file["psi_history"]["psi_history_" + str(num_batch)])
-        plt.figure()
-        plt.imshow(data)
-        plt.clim(0, 0.001)  # Set color limits for better visibility
+        # plt.figure()
+        # plt.imshow(data)
+        # plt.clim(0, 0.0005)  # Set color limits for better visibility
         plt.figure()
         plt.imshow(data, cmap='turbo', extent=( x[0], x[-1], t[(num_batch+1)*data.shape[0] -1],t[num_batch*data.shape[0]]), aspect='auto')
         # plt.imshow(data.T, cmap='turbo', extent=( t[num_batch*data.shape[0]], t[(num_batch+1)*data.shape[0] -1] , x[-1], x[0]), aspect='auto')
         temp = electric_field[num_batch*data.shape[0]:(num_batch+1)*data.shape[0]-1][:, 1] / np.max(electric_field[num_batch*data.shape[0]:(num_batch+1)*data.shape[0]-1][:, 1]) * abs(x[-1])
         # plt.plot(electric_field[num_batch*data.shape[0]:(num_batch+1)*data.shape[0]-1][:, 0], temp, color='red', label='Electric Field')
         plt.plot(temp, electric_field[num_batch*data.shape[0]:(num_batch+1)*data.shape[0]-1][:, 0], color='red', label='Electric Field')
-        plt.xlabel("Time (a.u.)")
-        plt.ylabel("Position (a.u.)")
+        plt.ylabel("Time (a.u.)")
+        plt.xlabel("Position (a.u.)")
         plt.title("Density Matrix for psi_history[6]")
         plt.colorbar(label='Intensity')
         plt.tight_layout()
 
         plt.clim(0, 0.001)  # Set color limits for better visibility
+
+
+        plt.figure()
+        plt.imshow(compute_rho(hdf5_file["psi_fonda_history"]["psi_fonda_history_" + str(num_batch)]), cmap='turbo', extent=( x[0], x[-1], t[(num_batch+1)*data.shape[0] -1],t[num_batch*data.shape[0]]), aspect='auto')
+        plt.plot(temp, electric_field[num_batch*data.shape[0]:(num_batch+1)*data.shape[0]-1][:, 0], color='red', label='Electric Field')
+        plt.ylabel("Time (a.u.)")
+        plt.xlabel("Position (a.u.)")
+        plt.title(f"Fundamental Wavefunction for psi_fonda_history[{num_batch}]")
+        plt.colorbar(label='Intensity')
+        plt.tight_layout()
+        plt.clim(0, 0.01)
+        
+
+
+        psi_history = hdf5_file["psi_history"]["psi_history_" + str(num_batch)]
+        psi_fonda_history = hdf5_file["psi_fonda_history"]["psi_fonda_history_" + str(num_batch)]
+        print("YOOOOOOOOOO", x.shape, x[0], x[-1], x[1]-x[0])
+        dipole_not_summed = np.conj(psi_fonda_history) * x * psi_history * parametres["dx"]
+        plt.figure()
+        plt.imshow(np.abs(dipole_not_summed), cmap='turbo', extent=( x[0], x[-1], t[(num_batch+1)*data.shape[0] -1],t[num_batch*data.shape[0]]), aspect='auto')
+        plt.plot(temp, electric_field[num_batch*data.shape[0]:(num_batch+1)*data.shape[0]-1][:, 0], color='red', label='Electric Field')
+        plt.ylabel("Time (a.u.)")
+        plt.xlabel("Position (a.u.)")
+        plt.title(f"Dipole Moment (not summed) for psi_history[{num_batch}]")
+        plt.colorbar(label='Dipole Moment (a.u.)')
+        plt.tight_layout()
+        plt.clim(0, 0.01)
 
     # elif "psi_history_1" in hdf5_file["psi_history"]:
     #     data = compute_rho(hdf5_file["psi_history"]["psi_history_1"])

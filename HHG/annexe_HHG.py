@@ -19,6 +19,8 @@ from scipy.sparse import diags
 from scipy.sparse.linalg import spsolve
 
 
+t_au = 2.418884e-17                                 # s, constant for conversion to atomic units
+
 
 def envelope(t, periode_au):
     """
@@ -57,6 +59,22 @@ def envelope_pulse(t, periode_au):
     """
     retour = np.sin(np.pi/ (t[-1] - t[0]) * (t-t[0])) ** 2
     return retour
+
+
+def envelope_laser_labo_approx(t, periode_au, fwhm=15e-15/t_au):
+    """
+    generate a laser envelope that could approximates the one in the lab (the envelope is a gaussian, centered on 0)
+    :param t: numpy array of time in a.u.
+    :param periode_au: period of the laser in a.u.
+    :param fwhm: full width at half maximum of the laser in a.u. (by default 22 fs in a.u.)
+    """
+    # Convert FWHM to standard deviation (sigma) for Gaussian
+    sigma = fwhm / (2 * np.sqrt(2 * np.log(2)))
+    # Create the Gaussian envelope
+    env = np.exp(-((t- 0) ** 2) / (2 * sigma ** 2))
+    # Normalize the envelope
+    env /= np.max(env)
+    return env
 
 
 

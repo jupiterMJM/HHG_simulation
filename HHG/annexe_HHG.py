@@ -110,3 +110,4 @@ def calculate_caracterisitcs_wavepacket(psi, x, psi_fonda):
     # stdp_fonda = np.sqrt(np.sum(product_fonda * moment_quantity**2, axis=1).real - momentum_on_fonda.real**2)  # standard deviation of momentum projected onto the fundamental state
     # stdp_itself = np.sqrt(np.sum(product_itself * moment_quantity**2, axis=1).real - momentum_on_itself.real**2)  # standard deviation of momentum projected onto the wavefunction itself
     return dipole_on_fonda, dipole_on_itself, momentum_on_fonda, momentum_on_itself, scalar_product_fonda, kinetic_energy, -1, -1, -1, -1
+

@@ -23,7 +23,7 @@ t_au = 2.418884e-17  # s, constant for conversion to atomic units
 
 
 # Ouverture du fichier
-with h5py.File(r"C:\maxence_data_results\HHG_simulation\HHG_simulation_linear_constant_1.0000e-02_5.0000e-02_8.0000e+02_1.0000e+14.h5", "r") as f:
+with h5py.File(r"C:\maxence_data_results\HHG_simulation\HHG_n2viaeigenstate_5.0000e-02_5.0000e-02_8.0000e+02_1.0000e+14.h5", "r") as f:
     parametres = f["simulation_parameters"].attrs
     I_wcm2 = parametres["I_wcm2"]  # in W/cm^2
     plot_direct_info(f, plot_classical_on_top_of_rho=True)

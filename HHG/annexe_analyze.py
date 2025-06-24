@@ -123,6 +123,10 @@ def plot_direct_info(hdf5_file, plot_classical_on_top_of_rho=False):
     intensity = compute_intensity_from_efield(electric_field[:, 1], electric_field[:, 0])
     print(f"Intensity in W/m^2 : Mean = {intensity[0]:.2e}, Max = {intensity[1]:.2e}")
 
+
+    # plot the initial wavefunction used as initial condition
+    plt.figure()
+    plt.plot(x, hdf5_file["psi_initial"][:], label="Initial Wavefunction")
     # plot the very beginning of the simulation to see how it behaves
     data = compute_rho(hdf5_file["psi_history"]["psi_history_0"])
     num_batch = 0
@@ -138,7 +142,24 @@ def plot_direct_info(hdf5_file, plot_classical_on_top_of_rho=False):
     plt.title("Density probability evolution for psi_history[0]")
     plt.colorbar(label='Intensity')
     plt.tight_layout()
-    plt.clim(0, 0.001)  # Set color limits for better visibility
+    plt.clim(0, 0.01)  # Set color limits for better visibility
+
+    # plot the very beginning of the simulation to see how it behaves
+    data = compute_rho(hdf5_file["psi_fonda_history"]["psi_fonda_history_0"])
+    num_batch = 0
+    plt.figure()
+    plt.imshow(data, cmap='turbo', extent=( x[0], x[-1], t[(num_batch+1)*data.shape[0] -1],t[num_batch*data.shape[0]]), aspect='auto')
+    # plt.imshow(data.T, cmap='turbo', extent=( t[num_batch*data.shape[0]], t[(num_batch+1)*data.shape[0] -1] , x[-1], x[0]), aspect='auto')
+    temp = electric_field[num_batch*data.shape[0]:(num_batch+1)*data.shape[0]-1][:, 1] / np.max(electric_field[num_batch*data.shape[0]:(num_batch+1)*data.shape[0]-1][:, 1]) * abs(x[-1])
+    plt.plot(temp, electric_field[num_batch*data.shape[0]:(num_batch+1)*data.shape[0]-1][:, 0], color='red', label='Electric Field')
+    # plt.plot(electric_field[num_batch*data.shape[0]:(num_batch+1)*data.shape[0]-1][:, 0], temp, color='red', label='Electric Field')
+    plt.legend()
+    plt.xlabel("Time (a.u.)")
+    plt.ylabel("Position (a.u.)")
+    plt.title("Density probability evolution for psi_fonda_history[0]")
+    plt.colorbar(label='Intensity')
+    plt.tight_layout()
+    plt.clim(0, 0.01)  # Set color limits for better visibility
 
 
 
@@ -162,7 +183,7 @@ def plot_direct_info(hdf5_file, plot_classical_on_top_of_rho=False):
         plt.colorbar(label='Intensity')
         plt.tight_layout()
 
-        plt.clim(0, 0.001)  # Set color limits for better visibility
+        plt.clim(0, 0.01)  # Set color limits for better visibility
 
 
 
@@ -202,7 +223,7 @@ def plot_direct_info(hdf5_file, plot_classical_on_top_of_rho=False):
         plt.title(f"Dipole Moment (not summed) for psi_history[{num_batch}]")
         plt.colorbar(label='Dipole Moment (a.u.)')
         plt.tight_layout()
-        plt.clim(0, 0.001)
+        plt.clim(0, 0.01)
 
     # elif "psi_history_1" in hdf5_file["psi_history"]:
     #     data = compute_rho(hdf5_file["psi_history"]["psi_history_1"])

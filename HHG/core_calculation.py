@@ -55,7 +55,7 @@ def potentiel_CAP(x, x_start, x_end, eta_0):
     return eta
 
 
-def evolve_crank_nikolson(psi, V, E, dt, x):
+def evolve_crank_nikolson(psi, V=None, E=None, dt=None, x=None, H=None, I=None, dx=None):
     """
     Evolue la fonction d'onde psi en utilisant la méthode de Crank-Nicolson pour résoudre l'équation de Schrödinger dépendante du temps.
     En partant du temps t_n et en évoluant vers t_{n+1}.
@@ -68,14 +68,16 @@ def evolve_crank_nikolson(psi, V, E, dt, x):
 
     :note: on prefere resoudre TDSE pas à pas afin d'avoir plus de liberté sur les potentiels et sur les enregistrements, plots....
     """
-    Nx = len(x)
-    dx = x[1] - x[0]  # pas d'espace
-    diagonals = [-2*np.ones(Nx), np.ones(Nx-1), np.ones(Nx-1)]
-    L = sparse.diags(diagonals, [0, -1, 1], dtype=np.complex128) / dx**2
-    potential = sparse.diags(V, 0, dtype=np.complex128) + sparse.diags(E * x, 0, dtype=np.complex128)       # TODO regarder s il faut un - ou pas dans le potentiel du champ electrique
-    assert np.any(potential.data != 0), "Potential matrix should not be zero"
-    H = -0.5 * L +  potential # Hamiltonian operator in sparse matrix form
-    I = sparse.diags(np.ones(Nx), 0)
+    if H is None:
+        Nx = len(x)
+        diagonals = [-2*np.ones(Nx), np.ones(Nx-1), np.ones(Nx-1)]
+        L = sparse.diags(diagonals, [0, -1, 1], dtype=np.complex128) / dx**2
+        potential = sparse.diags(V, 0, dtype=np.complex128) + sparse.diags(E * x, 0, dtype=np.complex128)       # TODO regarder s il faut un - ou pas dans le potentiel du champ electrique
+        assert np.any(potential.data != 0), "Potential matrix should not be zero"
+        H = -0.5 * L +  potential # Hamiltonian operator in sparse matrix form
+        I = sparse.diags(np.ones(Nx), 0)
+    elif I is None or dt is None or dx is None:
+        raise ValueError("Either H or I, dt, and dx must be provided to evolve the wavefunction.")
     A = (I + 1j * dt / 2 * H).tocsc()
     B = (I - 1j * dt / 2 * H).tocsc()
     b = B.dot(psi)

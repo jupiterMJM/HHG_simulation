@@ -48,7 +48,7 @@ I_wcm2 = 1e14                                       # Intensity in W/cm^2, NOT I
 main_directory = "C:/maxence_data_results/HHG_simulation/"
 # file_psi = main_directory + f"psi_history_{dx:.4e}_{dt:.4e}_{wavelength:.4e}_{I_wcm2:.4e}.h5"  # File to save the wavefunction history
 # file_psi_fonda = main_directory + f"psi_fonda_history_{dx:.4e}_{dt:.4e}_{wavelength:.4e}_{I_wcm2:.4e}.h5"  # File to save the fundamental wavefunction history
-file_output = main_directory + f"HHG_n2viaeigenstate_{dx:.4e}_{dt:.4e}_{wavelength:.4e}_{I_wcm2:.4e}.h5"  # File to save all the results
+file_output = main_directory + f"HHG_globalL_toremove_{dx:.4e}_{dt:.4e}_{wavelength:.4e}_{I_wcm2:.4e}.h5"  # File to save all the results
 
 # Initial wavefunction
 # psi_init = np.exp(-np.abs(x))                       # will be used both as initial wavefunction and as initial fondamental wavefunction
@@ -153,6 +153,18 @@ psi_fonda = np.complex128(psi_init.copy())  # Initial fundamental wavefunction
 
 psi_history[0] = psi.copy()  # Store initial wavefunction
 psi_fonda_history[0] = psi_fonda.copy()  # Store initial fundamental wavefunction
+
+
+# calculating the hamiltonian operator to speed up the simulation
+# be careful it will be used globally by the function evolve_crank_nikolson
+Nx = len(x)
+diagonals = [-2*np.ones(Nx), np.ones(Nx-1), np.ones(Nx-1)]
+L = sparse.diags(diagonals, [0, -1, 1], dtype=np.complex128) / dx**2
+diag_potential_spatial = sparse.diags(potentiel_spatial, 0, dtype=np.complex128)
+I = sparse.diags(np.ones(Nx), 0)
+H_atomique = -0.5 * L + diag_potential_spatial     # Hamiltonian operator in sparse matrix form
+
+
 ###############################################################################
 
 
@@ -211,12 +223,16 @@ i = -1
 for En in tqdm(champE):
     i += 1
 
-    psi = evolve_crank_nikolson(psi, potentiel_spatial, En, dt, x)
+    # updating the electric field in the potential
+    H = H_atomique + sparse.diags(En * x, 0, dtype=np.complex128)  # Update Hamiltonian with the electric field
+
+    # resolving TDSE
+    psi = evolve_crank_nikolson(psi, H=H, I=I, dt=dt, dx=dx)
     assert np.isclose(np.sum(np.abs(psi)**2) * dx, 1.0, atol=1e-6), f"Normalization condition not satisfied {np.sum(np.abs(psi)**2) * dx}"
     psi_history[i, :] = psi.copy()  # Store the wavefunction at this time step
 
 
-    psi_fonda = evolve_crank_nikolson(psi_fonda, potentiel_spatial, 0, dt, x)       # Evolve the fundamental state without the laser field
+    psi_fonda = evolve_crank_nikolson(psi_fonda, H=H_atomique, I=I, dt=dt, dx=dx)       # Evolve the fundamental state without the laser field
     assert np.isclose(np.sum(np.abs(psi_fonda)**2) * dx, 1.0, atol=1e-6), f"Normalization condition not satisfied for fundamental state {np.sum(np.abs(psi_fonda)**2) * dx}"
     psi_fonda_history[i, :] = psi_fonda.copy()  # Store the fundamental state at this time step
 

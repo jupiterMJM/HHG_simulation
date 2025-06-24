@@ -45,6 +45,7 @@ plt.grid()
 plt.figure()
 plt.plot(x, eigvecs[:, 1])
 plt.plot(x, np.exp(-np.abs(x)), label='Analytical 1s state', linestyle='--', color='red')
-np.save('1D_hydrogen_eigenstates.npy', eigvecs[:, 1])
+array_to_save = np.array(([x, eigvecs[:, 1]]))
+np.save('1D_hydrogen_eigenstates.npy', array_to_save)
 plt.show()
 

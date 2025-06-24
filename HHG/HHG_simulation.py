@@ -19,7 +19,7 @@ import h5py
 ## CONFIGURATION
 #################################################################################
 # Space and time parameters
-dx = 0.05                                         # in a.u. => should be small enough to resolve well the wave function => dx < 0.1 is a good value
+dx = 0.01                                         # in a.u. => should be small enough to resolve well the wave function => dx < 0.1 is a good value
 x = np.arange(-120, 120, dx)                     # in a.u. => 1au=roughly 24as, this is the space grid for the simulation
 dt = 0.05                                           # in a:u , if dt>0.05, we can t see electron that comes back to the nucleus
 t = np.arange(-1000, 1000, dt)                      # also in a.u. => 1au=roughly 24as
@@ -53,7 +53,19 @@ file_output = main_directory + f"HHG_n2viaeigenstate_{dx:.4e}_{dt:.4e}_{waveleng
 # Initial wavefunction
 # psi_init = np.exp(-np.abs(x))                       # will be used both as initial wavefunction and as initial fondamental wavefunction
 # psi_init /= np.sqrt(np.sum(np.abs(psi_init)**2) * dx)  # Normalisation of the initial wavefunction
-psi_init = np.load("1D_hydrogen_eigenstates.npy")
+
+def psi_init_func(x):
+    """ initial waveunction based on interpolating on eigenstates of the hydrogen atom """
+    # Load the eigenstates of the hydrogen atom
+    eigenstates = np.load("1D_hydrogen_eigenstates.npy")
+    x_eigen = eigenstates[0]
+    psi_eigen = eigenstates[1]
+
+    # Interpolate the eigenstates to get the initial wavefunction
+    psi_init = np.interp(x, x_eigen, psi_eigen)
+    psi_init /= np.sqrt(np.sum(np.abs(psi_init)**2) * dx)  # Normalisation of the initial wavefunction
+    return psi_init
+psi_init = psi_init_func(x)  # Initial wavefunction based on eigenstates of the hydrogen atom
 
 # constants (DO NOT CHANGE THESE VALUES)
 c = 2.99792458e8                                    # m/s, speed of light

@@ -13,6 +13,11 @@ from scipy.fft import fft, fftfreq
 from scipy.constants import e, m_e, epsilon_0, c, h
 from scipy.signal.windows import gaussian
 from scipy.signal import ShortTimeFFT
+import os
+import sys
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))  # Add
+from classical_view.generate_mask_classical import *
+
 t_au = 2.418884e-17  # s, constant for conversion to atomic units
 
 
@@ -21,7 +26,7 @@ t_au = 2.418884e-17  # s, constant for conversion to atomic units
 with h5py.File(r"C:\maxence_data_results\HHG_simulation\HHG_simulation_linear_constant_1.0000e-02_5.0000e-02_8.0000e+02_1.0000e+14.h5", "r") as f:
     parametres = f["simulation_parameters"].attrs
     I_wcm2 = parametres["I_wcm2"]  # in W/cm^2
-    plot_direct_info(f)
+    plot_direct_info(f, plot_classical_on_top_of_rho=True)
 
     # plt.show()
     # calcul du dipole

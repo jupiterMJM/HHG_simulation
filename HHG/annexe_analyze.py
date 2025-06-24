@@ -7,6 +7,11 @@ import numpy as np
 import matplotlib.pyplot as plt
 import h5py
 import random as rd
+import os
+import sys
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))  # Add
+from classical_view.generate_mask_classical import *
+from annexe_HHG import envelope, envelope_pulse
 
 
 
@@ -54,7 +59,7 @@ def plot_a_matrix(hdf5_group: h5py.Group, index:int = None, title=None, xlabel=N
     plt.tight_layout()
 
 
-def plot_direct_info(hdf5_file):
+def plot_direct_info(hdf5_file, plot_classical_on_top_of_rho=False):
     """
     this function will plot graphs that can be directly plotted from the hdf5 file
     the aim is to gather here all the plots that are always done not to put to much code in the main file
@@ -145,7 +150,7 @@ def plot_direct_info(hdf5_file):
         # plt.figure()
         # plt.imshow(data)
         # plt.clim(0, 0.0005)  # Set color limits for better visibility
-        plt.figure()
+        fig = plt.figure()
         plt.imshow(data, cmap='turbo', extent=( x[0], x[-1], t[(num_batch+1)*data.shape[0] -1],t[num_batch*data.shape[0]]), aspect='auto')
         # plt.imshow(data.T, cmap='turbo', extent=( t[num_batch*data.shape[0]], t[(num_batch+1)*data.shape[0] -1] , x[-1], x[0]), aspect='auto')
         temp = electric_field[num_batch*data.shape[0]:(num_batch+1)*data.shape[0]-1][:, 1] / np.max(electric_field[num_batch*data.shape[0]:(num_batch+1)*data.shape[0]-1][:, 1]) * abs(x[-1])
@@ -158,6 +163,19 @@ def plot_direct_info(hdf5_file):
         plt.tight_layout()
 
         plt.clim(0, 0.001)  # Set color limits for better visibility
+
+
+
+        if plot_classical_on_top_of_rho:
+            print("Plotting classical trajectories on top of the density matrix...")
+            time_grid_of_the_plot = electric_field[num_batch*data.shape[0]:(num_batch+1)*data.shape[0]-1][:, 0]
+            print("HERERERERE l172", time_grid_of_the_plot.shape, time_grid_of_the_plot[0], time_grid_of_the_plot[-1])
+
+            champE_func = lambda t: E0_laser*np.cos(omega_au * t)
+
+            plot_classical_trajectories(champE_func, time_grid=t, ax=plt.gca(), position_grid_for_plot=x, time_grid_for_plot=time_grid_of_the_plot, plot_vertically=True)
+
+
 
 
         plt.figure()

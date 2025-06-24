@@ -31,9 +31,10 @@ def envelope(t, periode_au):
 
     :note: l'enveloppe est une rampe de montée puis un plateau constant
     """
+    t = np.array(t)
     t1 = t[0] + periode_au * 4
     t2 = t[-1] - periode_au * 4
-    t = np.array(t)
+    
     env = np.zeros_like(t, dtype=float)
     # Ramp up
     mask1 = (t < t1)

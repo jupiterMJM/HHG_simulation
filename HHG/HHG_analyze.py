@@ -11,7 +11,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 from scipy.fft import fft, fftfreq
 from scipy.constants import e, m_e, epsilon_0, c, h
-from scipy.signal.windows import gaussian
+from scipy.signal.windows import gaussian, blackmanharris
 from scipy.signal import ShortTimeFFT
 import os
 import sys
@@ -20,29 +20,32 @@ from classical_view.generate_mask_classical import *
 
 t_au = 2.418884e-17  # s, constant for conversion to atomic units
 
-
-
+# for plateau: HHG_1064nm_1e14_1.0000e-02_5.0000e-02_1.0640e+03_1.0000e+14.h5 (mais pas tres beau)
+# HHG_article1990_biggertimerange_psiinitfunc_2.5000e-01_1.8375e-01_1.0640e+03_1.0000e+14.h5
 # Ouverture du fichier
-with h5py.File(r"C:\maxence_data_results\HHG_simulation\HHG_n2viaeigenstate_1.0000e-02_5.0000e-02_8.0000e+02_1.0000e+14.h5", "r") as f:
+with h5py.File(r"C:\maxence_data_results\HHG_simulation\HHG_article1990_biggertimerange_psiinitfunc_2.5000e-01_1.8375e-01_1.0640e+03_1.0000e+14.h5", "r") as f:
     parametres = f["simulation_parameters"].attrs
     I_wcm2 = parametres["I_wcm2"]  # in W/cm^2
-    plot_direct_info(f, plot_classical_on_top_of_rho=True)
+    plot_direct_info(f, plot_classical_on_top_of_rho=False)
 
     # plt.show()
     # calcul du dipole
     print("Calcul du dipole...")
+    dipole_on_what = "itself"
     if "save_the_psi_history" not in parametres:
         print("No saved wavefunctions found. Computing dipole from wavepacket characteristics.")
-        dipole, t = compute_dipole(f)
+        dipole, t = compute_dipole(f, dipole_on_what=dipole_on_what)
     elif parametres["save_the_psi_history"]:
         print("Using saved wavefunctions to compute the dipole.")
-        dipole, t = compute_dipole(f)
+        dipole, t = compute_dipole(f, dipole_on_what=dipole_on_what)
     else:
         dipole = np.array([])
 
-        for batch in sorted(f["wavepacket_characteristics/dipole_on_fonda"], key=lambda x: int(x.split('_')[-1])):
+        
+        assert dipole_on_what in ("fonda", "itself"), "dipole_on_what must be either 'fonda' or 'itself'"
+        for batch in sorted(f[f"wavepacket_characteristics/dipole_on_{dipole_on_what}"], key=lambda x: int(x.split('_')[-1])):
             # print("HELLLLLLO", f[f"wavepacket_characteristics/dipole_on_fonda/{batch}"])
-            dipole = np.append(dipole, np.array(f[f"wavepacket_characteristics/dipole_on_fonda/{batch}"]))
+            dipole = np.append(dipole, np.array(f[f"wavepacket_characteristics/dipole_on_{dipole_on_what}/{batch}"]))
 
         momentum = None
         if "momentum_on_itself" in f["wavepacket_characteristics"]:
@@ -69,11 +72,12 @@ with h5py.File(r"C:\maxence_data_results\HHG_simulation\HHG_n2viaeigenstate_1.00
         
         
     plt.figure()
+    print(f"[INFO] Dipole on {dipole_on_what} shape: {dipole.shape}, t shape: {t.shape}")
     plt.plot(t, dipole)
     e_field_to_plot = f["potentials_fields/champE"][:, 1][np.logical_and(f["potentials_fields/champE"][:, 0] >= t[0], f["potentials_fields/champE"][:, 0] <= t[-1])]
     plt.plot(t, e_field_to_plot/np.max(e_field_to_plot), label="Electric Field")
     plt.xlabel("Time (a.u.)")
-    plt.ylabel("Dipole (a.u.)")
+    plt.ylabel(f"Dipole on {dipole_on_what}(a.u.)")
     plt.title("Dipole over time")
     plt.grid()
     plt.tight_layout()
@@ -92,10 +96,11 @@ with h5py.File(r"C:\maxence_data_results\HHG_simulation\HHG_n2viaeigenstate_1.00
 
     # calcul du spectre
     # apply_fft_on = dipole.real[np.logical_and(t > 1200, True)]  # Keep only the central part of the emission
-    apply_fft_on = dipole.real  # Use the entire dipole for FFT
+    apply_fft_on = dipole.real[t>=500]  # Use the entire dipole for FFT
     if apply_fft_on.size == 0:
         raise ValueError("No data available for FFT. Please check the dipole data. ( probably error of mask when choosing the time range )")
     N = len(apply_fft_on)
+    apply_fft_on = blackmanharris(len(apply_fft_on)) * apply_fft_on  # Apply a Blackman-Harris window to reduce spectral leakage
     apply_fft_on = np.pad(apply_fft_on, pad_width=(2**(17) - N)//2, mode='constant')  # Padding to the next power of 2 for FFT efficiency
     N = len(apply_fft_on)  # New length after padding
     frequencies = fftfreq(N, parametres["dt"])  # en a.u.^(-1)
@@ -117,7 +122,7 @@ with h5py.File(r"C:\maxence_data_results\HHG_simulation\HHG_n2viaeigenstate_1.00
     # plt.xscale('log')
     
     print("spectrum", spectrum[:N//2], spectrum[spectrum >0])
-    plt.plot(frequencies[spectrum >0][:N//2]/laser_IR_freq, spectrum[spectrum >0][:N//2])
+    plt.plot(frequencies[spectrum >0][:N//2]/laser_IR_freq, spectrum[spectrum >0][:N//2]**2)
     plt.axvline(x=1, color='r', linestyle='--', label='Fundamental Frequency (ω₀)')
     plt.axvline(x=freq_cutoff/laser_IR_freq, color='g', linestyle='--', label='Cut-off Frequency (ω_cutoff)')
     plt.xlabel("Harmonic order (ω/ω₀)")

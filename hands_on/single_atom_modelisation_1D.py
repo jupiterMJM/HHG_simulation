@@ -12,7 +12,7 @@ N = len(x)                                       # number of points in the grid
 
 # 1D Hydrogen-like potential (softened to avoid singularity at x=0)
 Z = 1.0
-epsilon = 1e-9
+epsilon = 1
 V = -Z / np.sqrt(x**2 + epsilon**2)
 
 # Kinetic energy operator (finite difference, central)

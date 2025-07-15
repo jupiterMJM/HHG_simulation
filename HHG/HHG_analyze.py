@@ -23,7 +23,7 @@ t_au = 2.418884e-17  # s, constant for conversion to atomic units
 # for plateau: HHG_1064nm_1e14_1.0000e-02_5.0000e-02_1.0640e+03_1.0000e+14.h5 (mais pas tres beau)
 # HHG_article1990_biggertimerange_psiinitfunc_2.5000e-01_1.8375e-01_1.0640e+03_1.0000e+14.h5
 # Ouverture du fichier
-with h5py.File(r"C:\maxence_data_results\HHG_simulation\HHG_article1990_biggertimerange_psiinitfunc_2.5000e-01_1.8375e-01_1.0640e+03_1.0000e+14.h5", "r") as f:
+with h5py.File(r"C:\maxence_data_results\HHG_simulation\HHG_new_initialwavefunction_gridincreased_envelope_labo_2.5000e-01_1.3816e-01_1.0640e+03_1.0000e+14.h5", "r") as f:
     parametres = f["simulation_parameters"].attrs
     I_wcm2 = parametres["I_wcm2"]  # in W/cm^2
     plot_direct_info(f, plot_classical_on_top_of_rho=False)
@@ -71,7 +71,7 @@ with h5py.File(r"C:\maxence_data_results\HHG_simulation\HHG_article1990_biggerti
             
         
         
-    plt.figure()
+    fig_dipole = plt.figure()
     print(f"[INFO] Dipole on {dipole_on_what} shape: {dipole.shape}, t shape: {t.shape}")
     plt.plot(t, dipole)
     e_field_to_plot = f["potentials_fields/champE"][:, 1][np.logical_and(f["potentials_fields/champE"][:, 0] >= t[0], f["potentials_fields/champE"][:, 0] <= t[-1])]
@@ -96,7 +96,9 @@ with h5py.File(r"C:\maxence_data_results\HHG_simulation\HHG_article1990_biggerti
 
     # calcul du spectre
     # apply_fft_on = dipole.real[np.logical_and(t > 1200, True)]  # Keep only the central part of the emission
-    apply_fft_on = dipole.real[t>=500]  # Use the entire dipole for FFT
+    t_borne_inf = -250  # in a.u.
+    t_borne_sup = 250  # in a.u.
+    apply_fft_on = dipole.real[np.logical_and(t>=t_borne_inf, t<=t_borne_sup)]  # Use the entire dipole for FFT
     if apply_fft_on.size == 0:
         raise ValueError("No data available for FFT. Please check the dipole data. ( probably error of mask when choosing the time range )")
     N = len(apply_fft_on)
@@ -110,6 +112,13 @@ with h5py.File(r"C:\maxence_data_results\HHG_simulation\HHG_article1990_biggerti
 
     laser_IR_wv = parametres["wavelength"]  # in nm
     laser_IR_freq = 3e8 / (laser_IR_wv * 1e-9)  # Convert wavelength in nm to frequency in Hz
+
+    # Plot vertical dashed grey lines at t_borne_inf and t_borne_sup on fig_dipole
+    plt.figure(fig_dipole.number)
+    plt.axvspan(t[0], t_borne_inf, color='grey', alpha=0.2)
+    plt.axvspan(t_borne_sup, t[-1], color='grey', alpha=0.2)
+    plt.axvline(x=t_borne_inf, color='grey', linestyle='--')
+    plt.axvline(x=t_borne_sup, color='grey', linestyle='--')
 
 
     # calculation of energy of the cut-off

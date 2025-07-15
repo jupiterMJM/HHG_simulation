@@ -17,6 +17,7 @@ import scipy.sparse.linalg as spla
 import scipy.sparse as sparse
 from scipy.sparse import diags
 from scipy.sparse.linalg import spsolve
+import os
 
 
 t_au = 2.418884e-17                                 # s, constant for conversion to atomic units
@@ -111,3 +112,28 @@ def calculate_caracterisitcs_wavepacket(psi, x, psi_fonda):
     # stdp_itself = np.sqrt(np.sum(product_itself * moment_quantity**2, axis=1).real - momentum_on_itself.real**2)  # standard deviation of momentum projected onto the wavefunction itself
     return dipole_on_fonda, dipole_on_itself, momentum_on_fonda, momentum_on_itself, scalar_product_fonda, kinetic_energy, -1, -1, -1, -1
 
+
+
+def psi_init_func(x, epsilon):
+    """
+    to generate the initial wavefunction you must use the eigenstates of the hydrogen atom computed thanks to single_atom_modelisation_1D.py
+    :param x: numpy array of positions in a.u.
+    :param epsilon: small value to avoid singularity at x=0
+    :return: initial wavefunction
+    """
+    dx = x[1] - x[0]  # assuming uniform grid
+    # check that the eigenstates file exists
+    name_to_folder = f"wavefunctions_{dx}_{epsilon}/"
+    if not os.path.exists(name_to_folder):
+        raise FileNotFoundError(f"Folder {name_to_folder} does not exist. Please run single_atom_modelisation_1D.py to generate the eigenstates.")
+
+    # Load the eigenstates of the hydrogen atom
+    ground_state = np.load(name_to_folder+"eigenstate_1.npy")  # assuming the ground state is saved in eigenstate_1.npy
+    x_eigen = ground_state[0]
+    psi_eigen = ground_state[1]
+
+    # Interpolate the eigenstates to get the initial wavefunction
+    # normally the intrep function should only add 0 at the edges of the grid, but do not really interpolate the values
+    psi_init = np.interp(x, x_eigen, psi_eigen, left=0, right=0)  # left and right values are set to 0 to avoid edge effects
+    psi_init /= np.sqrt(np.sum(np.abs(psi_init)**2) * dx)  # Normalisation of the initial wavefunction
+    return psi_init

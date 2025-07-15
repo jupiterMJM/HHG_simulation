@@ -20,12 +20,12 @@ import h5py
 #################################################################################
 # Space and time parameters
 dx = 0.25                                         # in a.u. => should be small enough to resolve well the wave function => dx < 0.1 is a good value
-x = np.arange(-200, 200, dx)                     # in a.u. => 1au=roughly 24as, this is the space grid for the simulation
-dt = 147/800                                           # in a:u , if dt>0.05, we can t see electron that comes back to the nucleus
+x = np.arange(-300, 300, dx)                     # in a.u. => 1au=roughly 24as, this is the space grid for the simulation
+dt = 147/1064                                           # in a:u , if dt>0.05, we can t see electron that comes back to the nucleus
 t = np.arange(-2000, 2000, dt)                      # also in a.u. => 1au=roughly 24as
 N = len(x)
-position_cap_abs = 150
-epsilon = 0.001                                    # small value to avoid division by zero in potential calculation
+position_cap_abs = 200
+epsilon = 1.41                                   # small value to avoid division by zero in potential calculation WARNING: choose the value of epsilon accordingly of the I_p of the atom you are looking!!!!
 do_plot_at_end = True                               # if True, plot quite a lot of things at the end of the simulation
 save_with_buffer = False                          # if True, save the wavefunction history every given timestep (very useful for huge and long simulations)
 buffer_size_nb_point = 1e9                                  # used only if save_with_buffer is True, the number of points that will be in the buffer (prevents memory overflow when changing dx)
@@ -48,25 +48,15 @@ I_wcm2 = 1e14                                       # Intensity in W/cm^2, NOT I
 main_directory = "C:/maxence_data_results/HHG_simulation/"
 # file_psi = main_directory + f"psi_history_{dx:.4e}_{dt:.4e}_{wavelength:.4e}_{I_wcm2:.4e}.h5"  # File to save the wavefunction history
 # file_psi_fonda = main_directory + f"psi_fonda_history_{dx:.4e}_{dt:.4e}_{wavelength:.4e}_{I_wcm2:.4e}.h5"  # File to save the fundamental wavefunction history
-file_output = main_directory + f"HHG_article1990_biggertimerange_psiinitfunc_{dx:.4e}_{dt:.4e}_{wavelength:.4e}_{I_wcm2:.4e}.h5"  # File to save all the results
+file_output = main_directory + f"HHG_new_initialwavefunction_gridincreased_envelope_labo_{dx:.4e}_{dt:.4e}_{wavelength:.4e}_{I_wcm2:.4e}.h5"  # File to save all the results
 
 # Initial wavefunction
 # psi_init = np.exp(-np.abs(x))                       # will be used both as initial wavefunction and as initial fondamental wavefunction
 # psi_init /= np.sqrt(np.sum(np.abs(psi_init)**2) * dx)  # Normalisation of the initial wavefunction
 
-def psi_init_func(x):
-    """ initial waveunction based on interpolating on eigenstates of the hydrogen atom """
-    # Load the eigenstates of the hydrogen atom
-    eigenstates = np.load("1D_hydrogen_eigenstates.npy")
-    x_eigen = eigenstates[0]
-    psi_eigen = eigenstates[1]
 
-    # Interpolate the eigenstates to get the initial wavefunction
-    psi_init = np.interp(x, x_eigen, psi_eigen)
-    psi_init /= np.sqrt(np.sum(np.abs(psi_init)**2) * dx)  # Normalisation of the initial wavefunction
-    return psi_init
 # psi_init = 1/np.sqrt(2) * np.exp(-np.abs(x))  # Initial wavefunction based on eigenstates of the hydrogen atom
-psi_init = psi_init_func(x)  # Initial wavefunction based on eigenstates of the hydrogen atom
+psi_init = psi_init_func(x, epsilon)  # Initial wavefunction based on eigenstates of the hydrogen atom
 
 # constants (DO NOT CHANGE THESE VALUES)
 c = 2.99792458e8                                    # m/s, speed of light
@@ -113,7 +103,7 @@ print(f"[INFO] Laser parameters:"
         f"\n  - Electric field amplitude (E0_laser): {E0_laser:.2e} a.u.")
 
 # Calcul de l'amplitude du laser en a.u.
-champE_func = lambda x, t: E0_laser*np.cos(omega_au * t) * envelope(t, periode_au=periode_au)
+champE_func = lambda x, t: E0_laser*np.cos(omega_au * t) * envelope_laser_labo_approx(t, periode_au=periode_au)
 champE = champE_func(x[:, None], t)                 # Champ électrique en fonction de x et t
 
 # Calcul du potentiel atomique

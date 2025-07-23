@@ -7,6 +7,11 @@ import numpy as np
 import matplotlib.pyplot as plt
 import h5py
 import random as rd
+import os
+import sys
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))  # Add
+from classical_view.generate_mask_classical import *
+from annexe_HHG import envelope, envelope_pulse
 
 
 
@@ -54,7 +59,7 @@ def plot_a_matrix(hdf5_group: h5py.Group, index:int = None, title=None, xlabel=N
     plt.tight_layout()
 
 
-def plot_direct_info(hdf5_file):
+def plot_direct_info(hdf5_file, plot_classical_on_top_of_rho=False):
     """
     this function will plot graphs that can be directly plotted from the hdf5 file
     the aim is to gather here all the plots that are always done not to put to much code in the main file
@@ -68,7 +73,8 @@ def plot_direct_info(hdf5_file):
     x = np.arange(parametres["x_start"], round(parametres["x_end"], 0), parametres["dx"])
     print("YOIIIIIIIIIIIIIIII", parametres["x_start"], int(parametres["x_end"]), parametres["dx"])
     print("YAAAAAAAAAAAAAAA", x.shape, x[0], x[-1], x[1]-x[0])
-    t = np.arange(parametres["t_start"], round(parametres["t_end"], 0), parametres["dt"])
+    # t = np.arange(parametres["t_start"], round(parametres["t_end"], 0), parametres["dt"])
+    t = hdf5_file["potentials_fields"]["champE"][:, 0]  # more explicit
 
     print(f"[INFO] Simulation parameters:")
     print(f"  - Space step (dx): {parametres["dx"]:.4e} a.u. ({len(x)} points)")
@@ -118,22 +124,44 @@ def plot_direct_info(hdf5_file):
     intensity = compute_intensity_from_efield(electric_field[:, 1], electric_field[:, 0])
     print(f"Intensity in W/m^2 : Mean = {intensity[0]:.2e}, Max = {intensity[1]:.2e}")
 
+
+    # plot the initial wavefunction used as initial condition
+    plt.figure()
+    plt.plot(x, hdf5_file["psi_initial"][:], label="Initial Wavefunction")
     # plot the very beginning of the simulation to see how it behaves
     data = compute_rho(hdf5_file["psi_history"]["psi_history_0"])
     num_batch = 0
     plt.figure()
     plt.imshow(data, cmap='turbo', extent=( x[0], x[-1], t[(num_batch+1)*data.shape[0] -1],t[num_batch*data.shape[0]]), aspect='auto')
     # plt.imshow(data.T, cmap='turbo', extent=( t[num_batch*data.shape[0]], t[(num_batch+1)*data.shape[0] -1] , x[-1], x[0]), aspect='auto')
+    # TODO REACTIVER LES DEUX PROCHAINES LIGNES
     temp = electric_field[num_batch*data.shape[0]:(num_batch+1)*data.shape[0]-1][:, 1] / np.max(electric_field[num_batch*data.shape[0]:(num_batch+1)*data.shape[0]-1][:, 1]) * abs(x[-1])
     plt.plot(temp, electric_field[num_batch*data.shape[0]:(num_batch+1)*data.shape[0]-1][:, 0], color='red', label='Electric Field')
     # plt.plot(electric_field[num_batch*data.shape[0]:(num_batch+1)*data.shape[0]-1][:, 0], temp, color='red', label='Electric Field')
     plt.legend()
-    plt.xlabel("Time (a.u.)")
-    plt.ylabel("Position (a.u.)")
+    plt.ylabel("Time (a.u.)")
+    plt.xlabel("Position (a.u.)")
     plt.title("Density probability evolution for psi_history[0]")
     plt.colorbar(label='Intensity')
     plt.tight_layout()
-    plt.clim(0, 0.001)  # Set color limits for better visibility
+    plt.clim(0, 0.0002)  # Set color limits for better visibility
+
+    # plot the very beginning of the simulation to see how it behaves
+    data = compute_rho(hdf5_file["psi_fonda_history"]["psi_fonda_history_0"])
+    num_batch = 0
+    plt.figure()
+    plt.imshow(data, cmap='turbo', extent=( x[0], x[-1], t[(num_batch+1)*data.shape[0] -1],t[num_batch*data.shape[0]]), aspect='auto')
+    # plt.imshow(data.T, cmap='turbo', extent=( t[num_batch*data.shape[0]], t[(num_batch+1)*data.shape[0] -1] , x[-1], x[0]), aspect='auto')
+    # temp = electric_field[num_batch*data.shape[0]:(num_batch+1)*data.shape[0]-1][:, 1] / np.max(electric_field[num_batch*data.shape[0]:(num_batch+1)*data.shape[0]-1][:, 1]) * abs(x[-1])
+    # plt.plot(temp, electric_field[num_batch*data.shape[0]:(num_batch+1)*data.shape[0]-1][:, 0], color='red', label='Electric Field')
+    # plt.plot(electric_field[num_batch*data.shape[0]:(num_batch+1)*data.shape[0]-1][:, 0], temp, color='red', label='Electric Field')
+    plt.legend()
+    plt.ylabel("Time (a.u.)")
+    plt.xlabel("Position (a.u.)")
+    plt.title("Density probability evolution for psi_fonda_history[0]")
+    plt.colorbar(label='Intensity')
+    plt.tight_layout()
+    plt.clim(0, 0.0002)  # Set color limits for better visibility
 
 
 
@@ -145,19 +173,32 @@ def plot_direct_info(hdf5_file):
         # plt.figure()
         # plt.imshow(data)
         # plt.clim(0, 0.0005)  # Set color limits for better visibility
-        plt.figure()
+        fig = plt.figure()
         plt.imshow(data, cmap='turbo', extent=( x[0], x[-1], t[(num_batch+1)*data.shape[0] -1],t[num_batch*data.shape[0]]), aspect='auto')
         # plt.imshow(data.T, cmap='turbo', extent=( t[num_batch*data.shape[0]], t[(num_batch+1)*data.shape[0] -1] , x[-1], x[0]), aspect='auto')
         temp = electric_field[num_batch*data.shape[0]:(num_batch+1)*data.shape[0]-1][:, 1] / np.max(electric_field[num_batch*data.shape[0]:(num_batch+1)*data.shape[0]-1][:, 1]) * abs(x[-1])
         # plt.plot(electric_field[num_batch*data.shape[0]:(num_batch+1)*data.shape[0]-1][:, 0], temp, color='red', label='Electric Field')
-        plt.plot(temp, electric_field[num_batch*data.shape[0]:(num_batch+1)*data.shape[0]-1][:, 0], color='red', label='Electric Field')
+        plt.plot(temp, electric_field[num_batch*data.shape[0]:(num_batch+1)*data.shape[0]-1][:, 0], color='red', label='Electric Field')      # TODO put it back
         plt.ylabel("Time (a.u.)")
         plt.xlabel("Position (a.u.)")
         plt.title("Density probability evolution for psi_history[6]")
         plt.colorbar(label='Intensity')
         plt.tight_layout()
 
-        plt.clim(0, 0.001)  # Set color limits for better visibility
+        plt.clim(0, 0.0005)  # Set color limits for better visibility
+
+
+
+        if plot_classical_on_top_of_rho:
+            print("Plotting classical trajectories on top of the density matrix...")
+            time_grid_of_the_plot = electric_field[num_batch*data.shape[0]:(num_batch+1)*data.shape[0]-1][:, 0]
+            print("HERERERERE l172", time_grid_of_the_plot.shape, time_grid_of_the_plot[0], time_grid_of_the_plot[-1])
+
+            champE_func = lambda t: E0_laser*np.cos(omega_au * t)
+
+            plot_classical_trajectories(champE_func, time_grid=t, ax=plt.gca(), position_grid_for_plot=x, time_grid_for_plot=time_grid_of_the_plot, plot_vertically=True)
+
+
 
 
         plt.figure()
@@ -168,7 +209,7 @@ def plot_direct_info(hdf5_file):
         plt.title(f"Fundamental Wavefunction for psi_fonda_history[{num_batch}]")
         plt.colorbar(label='Intensity')
         plt.tight_layout()
-        plt.clim(0, 0.01)
+        plt.clim(0, 0.0002)
         
 
 
@@ -184,7 +225,7 @@ def plot_direct_info(hdf5_file):
         plt.title(f"Dipole Moment (not summed) for psi_history[{num_batch}]")
         plt.colorbar(label='Dipole Moment (a.u.)')
         plt.tight_layout()
-        plt.clim(0, 0.001)
+        plt.clim(0, 0.0002)
 
     # elif "psi_history_1" in hdf5_file["psi_history"]:
     #     data = compute_rho(hdf5_file["psi_history"]["psi_history_1"])
@@ -205,25 +246,49 @@ def plot_direct_info(hdf5_file):
 
 
 
-def compute_dipole(hdf5_file):
+def compute_dipole(hdf5_file, dipole_on_what="itself", remove_all_cap=False, plot_not_summed_dipole=False):
     """
     Compute the dipole moment from the wavefunction data in the HDF5 file.
     
     :param hdf5_file: HDF5 file containing the wavefunction data
     the aim is to compute is while saving the memory of my computer
+    if remove_all_cap is True, the function will not consider at all the part of wavefunction that are in the CAP
     :return: Dipole moment
     """
     parametres = hdf5_file["simulation_parameters"].attrs
     x = np.arange(parametres["x_start"], np.round(parametres["x_end"], 0), parametres["dx"])
     dx = parametres["dx"]
-    t = np.arange(parametres["t_start"], np.round(parametres["t_end"], 0), parametres["dt"])
+    # t = np.arange(parametres["t_start"], np.round(parametres["t_end"], 0), parametres["dt"])
+    t = hdf5_file["potentials_fields"]["champE"][:, 0]  # more explicit
+
+    if remove_all_cap:
+        potential_spatial = hdf5_file["potentials_fields"]["potentiel_spatial"][:, 1]
+        mask_cap = np.where(potential_spatial.imag == 0, True, False)
+    else:
+        mask_cap = np.ones_like(x, dtype=bool)
 
     dipole_retour = np.array([])
     for i in range(len(hdf5_file["psi_history"])):
-        psi_history = hdf5_file["psi_history"][sorted(list(hdf5_file["psi_history"].keys()), key = lambda x: int(x.split("_")[-1]))[i]]
-        psi_fonda_history = hdf5_file["psi_fonda_history"][list(hdf5_file["psi_fonda_history"].keys())[i]]
-        dipole_current_batch = np.sum(np.conj(psi_fonda_history) * x * psi_history, axis=1) * dx
+        psi_history = hdf5_file["psi_history"][sorted(list(hdf5_file["psi_history"].keys()), key = lambda x: int(x.split("_")[-1]))[i]][:, mask_cap]
+        psi_fonda_history = hdf5_file["psi_fonda_history"][list(hdf5_file["psi_fonda_history"].keys())[i]][:, mask_cap]
+        x = x[mask_cap]
+        if dipole_on_what == "fonda":
+            dipole_current_batch = np.sum(np.conj(psi_fonda_history) * x * psi_history, axis=1) * dx
+        elif dipole_on_what == "itself":
+            dipole_current_batch = np.sum(np.conj(psi_history) * x * psi_history, axis=1) * dx
+        else:
+            raise ValueError("dipole_on_what must be 'fonda' or 'itself'.")
         dipole_retour = np.append(dipole_retour, dipole_current_batch)
+
+    if plot_not_summed_dipole:
+        plt.figure()
+        plt.imshow((np.conj(psi_fonda_history) * x * psi_history).real, cmap='turbo', extent=(x[0], x[-1], t[-1], t[0]), aspect='auto')
+        plt.xlabel("Time (a.u.)")
+        plt.ylabel(f"Dipole on {dipole_on_what} (a.u.)")
+        plt.title("Dipole over time")
+        plt.colorbar(label='Dipole')
+        plt.tight_layout()
+        plt.clim(-0.002, 0.002)  # Set color limits for better visibility
     return dipole_retour, t
 
 

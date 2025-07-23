@@ -74,21 +74,23 @@ for time_ionization in np.arange(0, time_range[-1], step_ionization):
         else:
             ax.plot(t / 2.418884e-17, x / 5.29177210903e-11, color=cmap(norm(e_k)))  # time in a.u., position in a.u., color by kinetic energy
 
+fontsize=11
 if not plot_in_au:
-    plt.xlabel('Time (fs)')
-    plt.ylabel('Position (nm)')
+    plt.xlabel('Time (fs)', fontsize=fontsize)
+    plt.ylabel('Position (nm)', fontsize=fontsize)
 else:
-    plt.xlabel('Time (a.u.)')
-    plt.ylabel('Position (a.u.)')
-plt.title('Electron Position in the Laser Field')
+    plt.xlabel('Time (a.u.)', fontsize=fontsize)
+    plt.ylabel('Position (a.u.)', fontsize=fontsize)
+plt.title('Electron Position in the Laser Field', fontsize=fontsize)
 # plt.legend()
 plt.grid()
-
+plt.xticks(fontsize=fontsize)
+plt.yticks(fontsize=fontsize)
 # Ajouter une colorbar fictive (avec mappable)
 sm = cm.ScalarMappable(norm=norm, cmap=cmap)
 sm.set_array([])  # pas besoin de données
 cbar = plt.colorbar(sm, ax=ax)
-cbar.set_label("Return Energy (eV)")
+cbar.set_label("Return Energy (eV)", fontsize=fontsize)
 
 if not plot_in_au:
     ax.plot(time_range, 3*np.sin(omega * time_range * 1e-15), 'r--', label='Laser Field')  # convert time to seconds for plotting, amplitude is arbitrary for visualization

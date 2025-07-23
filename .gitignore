@@ -1,3 +1,5 @@
 hands_on/pb.py
 *.pyc
 *.txt
+*.npy
+wavefunctions_0.25_1.41/wavefunctions_info.json

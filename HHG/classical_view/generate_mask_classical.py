@@ -49,7 +49,7 @@ def integration_laws_of_motion(t, E_laser, x0=0, v0=0):
 ################################################################################
 ## MAIN FUNCTION
 ################################################################################
-def plot_classical_trajectories(E_laser, time_grid, ax, time_grid_for_plot, position_grid_for_plot):
+def plot_classical_trajectories(E_laser, time_grid, ax, time_grid_for_plot, position_grid_for_plot, plot_vertically=True):
     """ this function plots the classical trajectories of the electron in the laser field
     :param E_laser: laser field in V/m (function of time)
     :param time_grid: time grid in s (array)
@@ -69,7 +69,7 @@ def plot_classical_trajectories(E_laser, time_grid, ax, time_grid_for_plot, posi
 
         if np.all(position[1:] * position[1] > 0):  # if the electron is always on the same side of the ion
             # the electron is not recombining with the ion
-            time_out_of_scope = t[np.where(np.logical_and(position > position_grid_for_plot[0], position < position_grid_for_plot[-1]))][-1]
+            time_out_of_scope = time_grid[np.where(np.logical_and(position > position_grid_for_plot[0], position < position_grid_for_plot[-1]))][-1]
             # print(time_out_of_scope, time_grid_for_plot[0])
             if time_out_of_scope < time_grid_for_plot[0]:
                 # if the last time is before the plot range, skip this ionization time
@@ -78,7 +78,10 @@ def plot_classical_trajectories(E_laser, time_grid, ax, time_grid_for_plot, posi
             position = position[np.logical_and(time_to_integrate_on >= time_grid_for_plot[0], time_to_integrate_on <= end_of_plot)]
             time_to_plot = time_to_integrate_on[np.logical_and(time_to_integrate_on >= time_grid_for_plot[0], time_to_integrate_on <= end_of_plot)]
             np.clip(position, position_grid_for_plot[0], position_grid_for_plot[-1], out=position)
-            ax.plot(time_to_plot, position, alpha=0.5, color='lightblue', label=f'Ionization at {time_ionization:.2f} fs')  # convert x to nm for plotting
+            if plot_vertically:
+                ax.plot(position, time_to_plot, alpha=0.5, color='lightblue', label=f'Ionization at {time_ionization:.2f} fs')
+            else:
+                ax.plot(time_to_plot, position, alpha=0.5, color='lightblue', label=f'Ionization at {time_ionization:.2f} fs')
 
         else:
             # print(time_to_integrate_on.shape, np.where(np.diff(np.sign(position[1:])))[0][0])
@@ -101,7 +104,10 @@ def plot_classical_trajectories(E_laser, time_grid, ax, time_grid_for_plot, posi
             np.clip(position, position_grid_for_plot[0], position_grid_for_plot[-1], out=position)
             position = position[np.logical_and(time_to_integrate_on >= max(time_grid_for_plot[0], time_ionization), time_to_integrate_on <= time_grid_for_plot[-1])]
             # print(time_grid_for_plot[np.logical_and(time_grid_for_plot>=time_ionization, time_grid_for_plot<=t_recombination)].shape, position.shape, time_grid_for_plot.shape)
-            ax.plot(time_grid_for_plot[np.logical_and(time_grid_for_plot>=time_ionization, time_grid_for_plot<=t_recombination)], position, alpha=0.7, color=cmap(norm(energy_recomb)), label=f'Ionization at {time_ionization:.2f} fs')
+            if plot_vertically:
+                ax.plot(position, time_grid_for_plot[np.logical_and(time_grid_for_plot>=time_ionization, time_grid_for_plot<=t_recombination)], alpha=0.7, color=cmap(norm(energy_recomb)), label=f'Ionization at {time_ionization:.2f} fs')
+            else:
+                ax.plot(time_grid_for_plot[np.logical_and(time_grid_for_plot>=time_ionization, time_grid_for_plot<=t_recombination)], position, alpha=0.7, color=cmap(norm(energy_recomb)), label=f'Ionization at {time_ionization:.2f} fs')
 
 
 if __name__ == "__main__":

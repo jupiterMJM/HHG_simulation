@@ -19,19 +19,19 @@ import h5py
 ## CONFIGURATION
 #################################################################################
 # Space and time parameters
-dx = 0.01                                         # in a.u. => should be small enough to resolve well the wave function => dx < 0.1 is a good value
-x = np.arange(-120, 120, dx)                     # in a.u. => 1au=roughly 24as, this is the space grid for the simulation
-dt = 0.05                                           # in a:u , if dt>0.05, we can t see electron that comes back to the nucleus
-t = np.arange(-1000, 1000, dt)                      # also in a.u. => 1au=roughly 24as
+dx = 0.25                                         # in a.u. => should be small enough to resolve well the wave function => dx < 0.1 is a good value
+x = np.arange(-300, 300, dx)                     # in a.u. => 1au=roughly 24as, this is the space grid for the simulation
+dt = 147/1064                                           # in a:u , if dt>0.05, we can t see electron that comes back to the nucleus
+t = np.arange(-2000, 2000, dt)                      # also in a.u. => 1au=roughly 24as
 N = len(x)
-position_cap_abs = 80
-epsilon = 0.00001                                    # small value to avoid division by zero in potential calculation
+position_cap_abs = 200
+epsilon = 1.41                                   # small value to avoid division by zero in potential calculation WARNING: choose the value of epsilon accordingly of the I_p of the atom you are looking!!!!
 do_plot_at_end = True                               # if True, plot quite a lot of things at the end of the simulation
-save_with_buffer = True                          # if True, save the wavefunction history every given timestep (very useful for huge and long simulations)
+save_with_buffer = False                          # if True, save the wavefunction history every given timestep (very useful for huge and long simulations)
 buffer_size_nb_point = 1e9                                  # used only if save_with_buffer is True, the number of points that will be in the buffer (prevents memory overflow when changing dx)
-save_the_psi_history = False                     # if True, save the wavefunction history in a file (useful for debugging and analysis), but can take a fucking lot of memory
+save_the_psi_history = True                     # if True, save the wavefunction history in a file (useful for debugging and analysis), but can take a fucking lot of memory
 # if False, only 2 or 3 batches will be saved just for debugging purposes, and the rest will be discarded
-charact_only_save_dipole = True          # if True, amongst the characteristics of the wavepacket, only the dipole will be saved (save space)
+charact_only_save_dipole = False          # if True, amongst the characteristics of the wavepacket, only the dipole will be saved (save space)
 
 
 
@@ -40,7 +40,7 @@ nb_buffer_full = int(len(t) / buffer_size)  # number of full buffers that will b
 
 
 # Laser Parameters
-wavelength = 800                                    # nm, NOT IN A.U. the conversion is done later
+wavelength = 1064                                    # nm, NOT IN A.U. the conversion is done later
 I_wcm2 = 1e14                                       # Intensity in W/cm^2, NOT IN A.U. the conversion is done later
 
 
@@ -48,11 +48,15 @@ I_wcm2 = 1e14                                       # Intensity in W/cm^2, NOT I
 main_directory = "C:/maxence_data_results/HHG_simulation/"
 # file_psi = main_directory + f"psi_history_{dx:.4e}_{dt:.4e}_{wavelength:.4e}_{I_wcm2:.4e}.h5"  # File to save the wavefunction history
 # file_psi_fonda = main_directory + f"psi_fonda_history_{dx:.4e}_{dt:.4e}_{wavelength:.4e}_{I_wcm2:.4e}.h5"  # File to save the fundamental wavefunction history
-file_output = main_directory + f"HHG_simulation_with_momentum_{dx:.4e}_{dt:.4e}_{wavelength:.4e}_{I_wcm2:.4e}.h5"  # File to save all the results
+file_output = main_directory + f"HHG_new_initialwavefunction_gridincreased_envelope_labo_{dx:.4e}_{dt:.4e}_{wavelength:.4e}_{I_wcm2:.4e}.h5"  # File to save all the results
 
 # Initial wavefunction
-psi_init = np.exp(-np.abs(x))                       # will be used both as initial wavefunction and as initial fondamental wavefunction
-psi_init /= np.sqrt(np.sum(np.abs(psi_init)**2) * dx)  # Normalisation of the initial wavefunction
+# psi_init = np.exp(-np.abs(x))                       # will be used both as initial wavefunction and as initial fondamental wavefunction
+# psi_init /= np.sqrt(np.sum(np.abs(psi_init)**2) * dx)  # Normalisation of the initial wavefunction
+
+
+# psi_init = 1/np.sqrt(2) * np.exp(-np.abs(x))  # Initial wavefunction based on eigenstates of the hydrogen atom
+psi_init = psi_init_func(x, epsilon)  # Initial wavefunction based on eigenstates of the hydrogen atom
 
 # constants (DO NOT CHANGE THESE VALUES)
 c = 2.99792458e8                                    # m/s, speed of light
@@ -99,13 +103,13 @@ print(f"[INFO] Laser parameters:"
         f"\n  - Electric field amplitude (E0_laser): {E0_laser:.2e} a.u.")
 
 # Calcul de l'amplitude du laser en a.u.
-champE_func = lambda x, t: E0_laser*np.cos(omega_au * t) * envelope(t, periode_au=periode_au)
+champE_func = lambda x, t: E0_laser*np.cos(omega_au * t) * envelope_laser_labo_approx(t, periode_au=periode_au)
 champE = champE_func(x[:, None], t)                 # Champ électrique en fonction de x et t
 
 # Calcul du potentiel atomique
 potentiel_atomique = -1.0 / np.sqrt(x**2 + epsilon) +0j
 potentiel_spatial = potentiel_atomique + potentiel_CAP(x, x_start=-abs(position_cap_abs), x_end=abs(position_cap_abs), eta_0=0.1)
-
+# potentiel_spatial = potentiel_atomique
 
 # check that the files do not already exist
 if os.path.exists(file_output):
@@ -140,6 +144,18 @@ psi_fonda = np.complex128(psi_init.copy())  # Initial fundamental wavefunction
 
 psi_history[0] = psi.copy()  # Store initial wavefunction
 psi_fonda_history[0] = psi_fonda.copy()  # Store initial fundamental wavefunction
+
+
+# calculating the hamiltonian operator to speed up the simulation
+# be careful it will be used globally by the function evolve_crank_nikolson
+Nx = len(x)
+diagonals = [-2*np.ones(Nx), np.ones(Nx-1), np.ones(Nx-1)]
+L = sparse.diags(diagonals, [0, -1, 1], dtype=np.complex128) / dx**2
+diag_potential_spatial = sparse.diags(potentiel_spatial, 0, dtype=np.complex128)
+I = sparse.diags(np.ones(Nx), 0)
+H_atomique = -0.5 * L + diag_potential_spatial     # Hamiltonian operator in sparse matrix form
+
+
 ###############################################################################
 
 
@@ -188,7 +204,6 @@ with h5py.File(file_output, 'w') as f:
     f['potentials_fields'].create_dataset('champE', data=np.vstack((t, champE)).T)
 
 
-
 ###############################################################################
 ## SIMULATION
 ###############################################################################
@@ -198,12 +213,16 @@ i = -1
 for En in tqdm(champE):
     i += 1
 
-    psi = evolve_crank_nikolson(psi, potentiel_spatial, En, dt, x)
+    # updating the electric field in the potential
+    H = H_atomique + sparse.diags(En * x, 0, dtype=np.complex128)  # Update Hamiltonian with the electric field
+
+    # resolving TDSE
+    psi = evolve_crank_nikolson(psi, H=H, I=I, dt=dt, dx=dx)
     assert np.isclose(np.sum(np.abs(psi)**2) * dx, 1.0, atol=1e-6), f"Normalization condition not satisfied {np.sum(np.abs(psi)**2) * dx}"
     psi_history[i, :] = psi.copy()  # Store the wavefunction at this time step
 
 
-    psi_fonda = evolve_crank_nikolson(psi_fonda, potentiel_spatial, 0, dt, x)       # Evolve the fundamental state without the laser field
+    psi_fonda = evolve_crank_nikolson(psi_fonda, H=H_atomique, I=I, dt=dt, dx=dx)       # Evolve the fundamental state without the laser field
     assert np.isclose(np.sum(np.abs(psi_fonda)**2) * dx, 1.0, atol=1e-6), f"Normalization condition not satisfied for fundamental state {np.sum(np.abs(psi_fonda)**2) * dx}"
     psi_fonda_history[i, :] = psi_fonda.copy()  # Store the fundamental state at this time step
 
@@ -299,9 +318,9 @@ else:
     #     f.create_dataset('psi_history', data=psi_history)
     # with h5py.File(file_psi_fonda, 'w') as f_fonda:
     #     f_fonda.create_dataset('psi_fonda_history', data=psi_fonda_history)
-    with h5py.File(file_output, 'w') as f:
-        f["psi_history"].create_dataset('psi_history', data=psi_history)
-        f["psi_fonda_history"].create_dataset('psi_fonda_history', data=psi_fonda_history)
+    with h5py.File(file_output, 'a') as f:
+        f["psi_history"].create_dataset('psi_history_0', data=psi_history)
+        f["psi_fonda_history"].create_dataset('psi_fonda_history_0', data=psi_fonda_history)
 
 if do_plot_at_end:
     print("[INFO] Plotting results...")

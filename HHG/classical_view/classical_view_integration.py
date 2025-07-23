@@ -23,7 +23,7 @@ from tqdm import tqdm
 ## CONFIGURATION
 ##########################################################################################
 # parameters of the laser
-wavelength = 800*1e-9      # m, NOT IN A.U. the conversion is done later
+wavelength = 1064*1e-9      # m, NOT IN A.U. the conversion is done later
 I_wcm2 = 1e14  # Intensity in W/cm^2, NOT IN A.U. the conversion is done later
 
 

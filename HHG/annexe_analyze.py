@@ -134,6 +134,7 @@ def plot_direct_info(hdf5_file, plot_classical_on_top_of_rho=False):
     plt.figure()
     plt.imshow(data, cmap='turbo', extent=( x[0], x[-1], t[(num_batch+1)*data.shape[0] -1],t[num_batch*data.shape[0]]), aspect='auto')
     # plt.imshow(data.T, cmap='turbo', extent=( t[num_batch*data.shape[0]], t[(num_batch+1)*data.shape[0] -1] , x[-1], x[0]), aspect='auto')
+    # TODO REACTIVER LES DEUX PROCHAINES LIGNES
     temp = electric_field[num_batch*data.shape[0]:(num_batch+1)*data.shape[0]-1][:, 1] / np.max(electric_field[num_batch*data.shape[0]:(num_batch+1)*data.shape[0]-1][:, 1]) * abs(x[-1])
     plt.plot(temp, electric_field[num_batch*data.shape[0]:(num_batch+1)*data.shape[0]-1][:, 0], color='red', label='Electric Field')
     # plt.plot(electric_field[num_batch*data.shape[0]:(num_batch+1)*data.shape[0]-1][:, 0], temp, color='red', label='Electric Field')
@@ -245,12 +246,13 @@ def plot_direct_info(hdf5_file, plot_classical_on_top_of_rho=False):
 
 
 
-def compute_dipole(hdf5_file, dipole_on_what="itself"):
+def compute_dipole(hdf5_file, dipole_on_what="itself", remove_all_cap=False, plot_not_summed_dipole=False):
     """
     Compute the dipole moment from the wavefunction data in the HDF5 file.
     
     :param hdf5_file: HDF5 file containing the wavefunction data
     the aim is to compute is while saving the memory of my computer
+    if remove_all_cap is True, the function will not consider at all the part of wavefunction that are in the CAP
     :return: Dipole moment
     """
     parametres = hdf5_file["simulation_parameters"].attrs
@@ -259,10 +261,17 @@ def compute_dipole(hdf5_file, dipole_on_what="itself"):
     # t = np.arange(parametres["t_start"], np.round(parametres["t_end"], 0), parametres["dt"])
     t = hdf5_file["potentials_fields"]["champE"][:, 0]  # more explicit
 
+    if remove_all_cap:
+        potential_spatial = hdf5_file["potentials_fields"]["potentiel_spatial"][:, 1]
+        mask_cap = np.where(potential_spatial.imag == 0, True, False)
+    else:
+        mask_cap = np.ones_like(x, dtype=bool)
+
     dipole_retour = np.array([])
     for i in range(len(hdf5_file["psi_history"])):
-        psi_history = hdf5_file["psi_history"][sorted(list(hdf5_file["psi_history"].keys()), key = lambda x: int(x.split("_")[-1]))[i]]
-        psi_fonda_history = hdf5_file["psi_fonda_history"][list(hdf5_file["psi_fonda_history"].keys())[i]]
+        psi_history = hdf5_file["psi_history"][sorted(list(hdf5_file["psi_history"].keys()), key = lambda x: int(x.split("_")[-1]))[i]][:, mask_cap]
+        psi_fonda_history = hdf5_file["psi_fonda_history"][list(hdf5_file["psi_fonda_history"].keys())[i]][:, mask_cap]
+        x = x[mask_cap]
         if dipole_on_what == "fonda":
             dipole_current_batch = np.sum(np.conj(psi_fonda_history) * x * psi_history, axis=1) * dx
         elif dipole_on_what == "itself":
@@ -270,6 +279,16 @@ def compute_dipole(hdf5_file, dipole_on_what="itself"):
         else:
             raise ValueError("dipole_on_what must be 'fonda' or 'itself'.")
         dipole_retour = np.append(dipole_retour, dipole_current_batch)
+
+    if plot_not_summed_dipole:
+        plt.figure()
+        plt.imshow((np.conj(psi_fonda_history) * x * psi_history).real, cmap='turbo', extent=(x[0], x[-1], t[-1], t[0]), aspect='auto')
+        plt.xlabel("Time (a.u.)")
+        plt.ylabel(f"Dipole on {dipole_on_what} (a.u.)")
+        plt.title("Dipole over time")
+        plt.colorbar(label='Dipole')
+        plt.tight_layout()
+        plt.clim(-0.002, 0.002)  # Set color limits for better visibility
     return dipole_retour, t
 
 
